@@ -17,6 +17,10 @@ jest.mock('../../src/api/chat', () => ({
   markConversationRead: jest.fn(),
 }));
 jest.mock('../../src/api/media', () => ({ uploadImage: jest.fn() }));
+jest.mock('../../src/utils/imageUpload', () => ({
+  ...jest.requireActual('../../src/utils/imageUpload'),
+  prepareForUpload: jest.fn(async (a) => ({ ...a, contentType: 'image/jpeg' })),
+}));
 // Пинч-зум на нативном драйвере жестов в Jest не работает — подменяем
 // просмотрщик простой картинкой с тем же onSingleTap.
 jest.mock('../../src/components/ZoomableImage', () => {
@@ -31,6 +35,7 @@ const { setAuth, resetContexts } = require('../helpers/mockContexts');
 const { getImage, queryImage } = require('../helpers/queries');
 const chatApi = require('../../src/api/chat');
 const { uploadImage } = require('../../src/api/media');
+const { prepareForUpload } = require('../../src/utils/imageUpload');
 const { forEachRole } = require('../helpers/roles');
 
 import ChatScreen from '../../src/screens/ChatScreen';
@@ -289,6 +294,8 @@ forEachRole(({ t }) => {
       fireEvent.changeText(messageInput(), 'Вот так');
       fireEvent.press(screen.getByLabelText('Отправить'));
       await waitFor(() => expect(chatApi.sendMessage).toHaveBeenCalledTimes(2));
+      // Фото ужимается под лимиты хранилища до загрузки, иначе крупный снимок получал 422.
+      expect(prepareForUpload).toHaveBeenCalledWith({ uri: 'file:///local.jpg' }, expect.any(Object));
       expect(uploadImage).toHaveBeenCalledWith({ uri: 'file:///local.jpg', contentType: 'image/jpeg' });
       expect(chatApi.sendMessage).toHaveBeenNthCalledWith(1, 'c1', '/media/files/photo.jpg');
       expect(chatApi.sendMessage).toHaveBeenNthCalledWith(2, 'c1', 'Вот так');

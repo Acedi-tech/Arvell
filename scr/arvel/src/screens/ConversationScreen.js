@@ -18,11 +18,12 @@ import {
   openConversation, listMessages, sendMessage, markConversationRead,
 } from '../api/chat';
 import { uploadImage } from '../api/media';
+import { prepareForUpload } from '../utils/imageUpload';
 import { resolveMediaUrl } from '../utils/media';
 import { formatTime, isImageBody } from '../utils/chatFormat';
 
 export default function ConversationScreen({ navigation, route }) {
-  const { conditions } = useAppConfig();
+  const { conditions, maxImageBytes, maxImageWidth, maxImageHeight } = useAppConfig();
   const money = useMoney();
   const name = route?.params?.name || 'Продавец';
   const rating = route?.params?.rating ?? 4.9;
@@ -105,7 +106,11 @@ export default function ConversationScreen({ navigation, route }) {
       // нет, тело сообщения — единственное, что принимает бэкенд.
       const sent = [];
       if (image) {
-        const url = await uploadImage({ uri: image, contentType: 'image/jpeg' });
+        // Фото с камеры — 3000–4000 px и несколько мегабайт, хранилище такое
+        // отклоняет с 422. Ужимаем под лимиты /config, как фото товара и аватар.
+        const url = await uploadImage(await prepareForUpload({ uri: image }, {
+          maxWidth: maxImageWidth, maxHeight: maxImageHeight, maxBytes: maxImageBytes,
+        }));
         sent.push(await sendMessage(conversationId, url));
       }
       if (t) sent.push(await sendMessage(conversationId, t));
