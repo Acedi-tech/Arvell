@@ -30,6 +30,7 @@ export default function ProductScreen({ navigation, route }) {
       name: shop?.shop_name || 'Продавец',
       rating: shop?.rating,
       phone: shop?.phone,
+      avatar: resolveMediaUrl(shop?.profile_pic_url),
       product,
       fromBuy,
     });

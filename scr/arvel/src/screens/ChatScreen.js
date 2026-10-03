@@ -1,5 +1,5 @@
 import React, { useState, useCallback } from 'react';
-import { View, Text, TextInput, FlatList, StyleSheet, Pressable, Alert } from 'react-native';
+import { View, Text, TextInput, FlatList, StyleSheet, Pressable, Alert, Image } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect } from '@react-navigation/native';
 import { colors, spacing, radius, font } from '../theme';
@@ -8,6 +8,7 @@ import { listConversations, markConversationRead } from '../api/chat';
 import { useAuth } from '../context/AuthContext';
 import { useChatUnread } from '../context/ChatUnreadContext';
 import { formatTime } from '../utils/chatFormat';
+import { resolveMediaUrl } from '../utils/media';
 import { loadHiddenChats, hideChats } from '../storage/chatStorage';
 
 export default function ChatScreen({ navigation }) {
@@ -28,6 +29,7 @@ export default function ChatScreen({ navigation }) {
     return {
       id: c.id,
       name: (iAmSeller ? c.buyer?.display_name : c.seller?.shop_name) || 'Диалог',
+      avatar: resolveMediaUrl(iAmSeller ? c.buyer?.profile_pic_url : c.seller?.profile_pic_url),
       rating: c.seller?.rating,
       phone: c.seller?.phone,
       last: c.last_message_preview || 'Нет сообщений',
@@ -81,7 +83,7 @@ export default function ChatScreen({ navigation }) {
   const handleRowPress = (item) => {
     if (selectMode) toggleSelected(item.id);
     else navigation.navigate('Conversation', {
-      conversationId: item.id, name: item.name, rating: item.rating, phone: item.phone,
+      conversationId: item.id, name: item.name, rating: item.rating, phone: item.phone, avatar: item.avatar,
     });
   };
 
@@ -165,7 +167,9 @@ export default function ChatScreen({ navigation }) {
               )}
               <View style={styles.avatarWrap}>
                 <View style={styles.avatar}>
-                  <Text style={styles.avatarText}>{item.name?.[0]?.toUpperCase() || '?'}</Text>
+                  {item.avatar
+                    ? <Image source={{ uri: item.avatar }} style={styles.avatarImage} />
+                    : <Text style={styles.avatarText}>{item.name?.[0]?.toUpperCase() || '?'}</Text>}
                 </View>
                 {item.dot && <View style={styles.redDot} />}
               </View>
@@ -243,6 +247,7 @@ const styles = StyleSheet.create({
   avatarWrap: { position: 'relative' },
   avatar: { width: 56, height: 56, borderRadius: 28, backgroundColor: colors.surfaceAlt, alignItems: 'center', justifyContent: 'center' },
   avatarText: { color: colors.text, fontSize: font.sizeLG, fontWeight: '700' },
+  avatarImage: { width: 56, height: 56, borderRadius: 28 },
   redDot: { position: 'absolute', top: 2, right: 2, width: 12, height: 12, borderRadius: 6, backgroundColor: colors.danger, borderWidth: 2, borderColor: colors.bg },
 
   rowBody: { flex: 1, borderBottomWidth: 1, borderBottomColor: colors.border, paddingBottom: spacing.md },

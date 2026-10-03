@@ -124,7 +124,7 @@ forEachRole(({ t }) => {
       await renderChat();
       fireEvent.press(screen.getByText('Alex Shop'));
       expect(navigation.navigate).toHaveBeenCalledWith('Conversation', {
-        conversationId: 'c1', name: 'Alex Shop', rating: 4.8, phone: undefined,
+        conversationId: 'c1', name: 'Alex Shop', rating: 4.8, phone: undefined, avatar: null,
       });
     });
 

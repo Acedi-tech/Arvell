@@ -26,6 +26,9 @@ export default function ConversationScreen({ navigation, route }) {
   const { conditions, maxImageBytes, maxImageWidth, maxImageHeight } = useAppConfig();
   const money = useMoney();
   const name = route?.params?.name || 'Продавец';
+  // Фото собеседника: из списка чатов/карточки товара, а при открытии чата
+  // со страницы товара — из ответа openConversation.
+  const [avatar, setAvatar] = useState(route?.params?.avatar || null);
   const rating = route?.params?.rating ?? 4.9;
   const phone = route?.params?.phone || null;
   const product = route?.params?.product || null;   // если пришли из «Купить»
@@ -68,6 +71,7 @@ export default function ConversationScreen({ navigation, route }) {
       if (!id && product?.id) {
         const conv = await openConversation(product.id);
         id = conv.id;
+        if (conv.seller?.profile_pic_url) setAvatar(resolveMediaUrl(conv.seller.profile_pic_url));
       }
       if (!id) {
         // Переписка без товара (например поддержка) бэкендом не поддержана:
@@ -165,7 +169,9 @@ export default function ConversationScreen({ navigation, route }) {
           <BackIcon size={24} />
         </Pressable>
         <View style={styles.avatar}>
-          <Text style={styles.avatarText}>{initial}</Text>
+          {avatar
+            ? <Image source={{ uri: avatar }} style={styles.avatarImage} />
+            : <Text style={styles.avatarText}>{initial}</Text>}
         </View>
         <View style={{ flex: 1 }}>
           <Text style={styles.name}>{name}</Text>
@@ -325,6 +331,7 @@ const styles = StyleSheet.create({
   },
   avatar: { width: 44, height: 44, borderRadius: 22, backgroundColor: colors.surfaceAlt, alignItems: 'center', justifyContent: 'center' },
   avatarText: { color: colors.text, fontSize: font.sizeMD, fontWeight: '700' },
+  avatarImage: { width: 44, height: 44, borderRadius: 22 },
   name: { color: colors.text, fontSize: font.sizeMD, fontWeight: '700' },
   ratingRow: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 2 },
   rating: { color: colors.textMuted, fontSize: font.sizeSM },
