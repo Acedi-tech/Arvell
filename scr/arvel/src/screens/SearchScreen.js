@@ -16,13 +16,13 @@ import { useMoney } from '../context/AppConfigContext';
 // без AsyncStorage список каждый раз возвращался к этим трём заглушкам.
 const RECENT_KEY = 'arvell.recent_searches';
 const RECENT_LIMIT = 8;
-const INITIAL_RECENT = ['Air Max', 'Stone Island худи', 'Куртка зима'];
 
 export default function SearchScreen({ navigation }) {
   const { products: feedProducts } = useProducts();
   const money = useMoney();
   const [query, setQuery] = useState('');
-  const [recent, setRecent] = useState(INITIAL_RECENT);
+  // Новому пользователю «Недавнее» пустое: раньше тут стояли выдуманные запросы.
+  const [recent, setRecent] = useState([]);
   const [popularBrands, setPopularBrands] = useState([]);
   const [brandSuggestions, setBrandSuggestions] = useState([]);
   const [selectedBrand, setSelectedBrand] = useState(null);
@@ -61,8 +61,8 @@ export default function SearchScreen({ navigation }) {
   const removeRecent = (item) => {
     setRecent((r) => {
       const next = r.filter((x) => x !== item);
-      // Пишем только после первой загрузки — иначе стартовый рендер с
-      // заглушками успевал бы затереть уже сохранённый список.
+      // Пишем только после первой загрузки — иначе пустой стартовый список
+      // успевал бы затереть уже сохранённый.
       if (recentLoaded.current) AsyncStorage.setItem(RECENT_KEY, JSON.stringify(next)).catch(() => {});
       return next;
     });

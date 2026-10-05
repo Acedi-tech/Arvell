@@ -253,17 +253,29 @@ forEachRole(({ t }) => {
         await waitFor(() => expect(listProducts).toHaveBeenCalledWith({ q: 'Adidas' }));
       });
 
-      it(t('Search: строка «Недавнее» (тап)', 'Search: строка «Недавнее»'), async () => {
+      // История поиска — только то, что пользователь искал сам (сохраняется на
+      // устройстве). Новому пользователю «Недавнее» не показывается вовсе.
+      const seedRecent = (items) => AsyncStorage.setItem('arvell.recent_searches', JSON.stringify(items));
+
+      it('Search: у нового пользователя «Недавнее» пустое', async () => {
         render(<SearchScreen navigation={navigation} />);
-        fireEvent.press(screen.getByText('Stone Island худи'));
+        await act(async () => {});
+        expect(screen.queryByText('Недавнее')).toBeNull();
+        expect(screen.queryByText('Air Max')).toBeNull();
+      });
+
+      it(t('Search: строка «Недавнее» (тап)', 'Search: строка «Недавнее»'), async () => {
+        await seedRecent(['Air Max', 'Stone Island худи', 'Куртка зима']);
+        render(<SearchScreen navigation={navigation} />);
+        fireEvent.press(await screen.findByText('Stone Island худи'));
         expect(input().props.value).toBe('Stone Island худи');
         await waitFor(() => expect(listProducts).toHaveBeenCalledWith({ q: 'Stone Island худи' }));
       });
 
       it(t('Search: «x» у «Недавнее» (удалить)', 'Search: «x» у «Недавнее»'), async () => {
+        await seedRecent(['Air Max', 'Stone Island худи', 'Куртка зима']);
         render(<SearchScreen navigation={navigation} />);
-        await act(async () => {});
-        expect(screen.getByText('Air Max')).toBeTruthy();
+        expect(await screen.findByText('Air Max')).toBeTruthy();
         fireEvent.press(screen.getAllByLabelText('Удалить из недавних')[0]);
         expect(screen.queryByText('Air Max')).toBeNull();
         const saved = JSON.parse(await AsyncStorage.getItem('arvell.recent_searches'));
@@ -452,7 +464,10 @@ forEachRole(({ t }) => {
     it('Сердечко на карточке (убрать)', () => {
       const fav = setFavorites({ items: [{ id: 'f1', product: nike }], favorites: ['p1'], isFavorite: () => true, count: 1 });
       render(<FavoritesScreen navigation={navigation} />);
-      fireEvent.press(hearts()[0]);
+      // Товар уже в избранном — читалка озвучивает это, а не «В избранное».
+      const heart = screen.getAllByLabelText('Убрать из избранного')[0];
+      expect(heart.props.accessibilityState).toEqual(expect.objectContaining({ selected: true }));
+      fireEvent.press(heart);
       expect(fav.toggleFavorite).toHaveBeenCalledWith('p1', nike);
     });
 

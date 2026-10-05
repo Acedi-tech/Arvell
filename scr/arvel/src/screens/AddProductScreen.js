@@ -8,6 +8,7 @@ import { BackIcon, CameraIcon, ChevronRight, CloseIcon } from '../components/Ico
 import PrimaryButton from '../components/PrimaryButton';
 import KeyboardAware from '../components/KeyboardAware';
 import SuccessOverlay from '../components/SuccessOverlay';
+import ConfirmDialog from '../components/ConfirmDialog';
 import { useMyListings } from '../context/MyListingsContext';
 import { useAppConfig, useMoney } from '../context/AppConfigContext';
 import { listCategories, listBrands } from '../api/catalog';
@@ -125,6 +126,22 @@ export default function AddProductScreen({ navigation }) {
   const [progress, setProgress] = useState('');
   const [submitError, setSubmitError] = useState(null);
   const [showSuccess, setShowSuccess] = useState(false);
+
+  // «Назад» (кнопка, жест, системная кнопка Android) с заполненной формой
+  // закрывал экран молча, и всё введённое пропадало. Теперь сначала спрашиваем.
+  const dirty = photos.length > 0 || categoryId !== '' || brandId !== NO_BRAND
+    || [title, color, sizeSystem, sizeValue, waist, inseam, price, condition, description]
+      .some((v) => String(v).trim() !== '');
+  const [pendingLeave, setPendingLeave] = useState(null);
+  const leaveGuard = useRef({ dirty, submitting, allowLeave: false });
+  leaveGuard.current.dirty = dirty;
+  leaveGuard.current.submitting = submitting;
+  useEffect(() => navigation.addListener('beforeRemove', (e) => {
+    const g = leaveGuard.current;
+    if (!g.dirty || g.submitting || g.allowLeave) return;
+    e.preventDefault();
+    setPendingLeave(e.data.action);
+  }), [navigation]);
 
   const loadRefs = useCallback(() => {
     setRefsError(null);
@@ -259,6 +276,7 @@ export default function AddProductScreen({ navigation }) {
 
       // Сервер принял объявление — подтягиваем «Мои объявления» и общую ленту.
       reloadAfterChange();
+      leaveGuard.current.allowLeave = true;
       setShowSuccess(true);
     } catch (e) {
       setSubmitError(describeError(e));
@@ -466,6 +484,22 @@ export default function AddProductScreen({ navigation }) {
         message="Ваше объявление сохранено и уже доступно покупателям в ленте ARVELL"
         buttonText="Отлично"
         onClose={() => { setShowSuccess(false); navigation.goBack(); }}
+      />
+
+      <ConfirmDialog
+        visible={!!pendingLeave}
+        title="Выйти без сохранения?"
+        message="Объявление ещё не опубликовано — всё, что вы заполнили, пропадёт."
+        confirmText="Выйти"
+        cancelText="Остаться"
+        onConfirm={() => {
+          const action = pendingLeave;
+          setPendingLeave(null);
+          leaveGuard.current.allowLeave = true;
+          navigation.dispatch(action);
+        }}
+        onCancel={() => setPendingLeave(null)}
+        onDismiss={() => setPendingLeave(null)}
       />
     </SafeAreaView>
   );

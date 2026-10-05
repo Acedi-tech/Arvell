@@ -54,7 +54,9 @@ export default function ProductCard({ product, onPress }) {
         <Pressable
           style={styles.likeBtn}
           hitSlop={8}
-          accessibilityLabel="В избранное"
+          // Читалка должна слышать, что товар уже в избранном, а не всегда «В избранное».
+          accessibilityLabel={liked ? 'Убрать из избранного' : 'В избранное'}
+          accessibilityState={{ selected: liked }}
           onPress={onLikePress}
         >
           <View style={styles.likeCircle}>

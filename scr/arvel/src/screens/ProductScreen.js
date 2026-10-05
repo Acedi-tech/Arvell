@@ -135,7 +135,7 @@ export default function ProductScreen({ navigation, route }) {
               <BackIcon size={22} />
             </Pressable>
             <View style={{ flexDirection: 'row', gap: spacing.sm }}>
-              <Pressable style={styles.roundBtn} hitSlop={8} accessibilityLabel="В избранное" onPress={onLikePress}>
+              <Pressable style={styles.roundBtn} hitSlop={8} accessibilityLabel={liked ? 'Убрать из избранного' : 'В избранное'} accessibilityState={{ selected: liked }} onPress={onLikePress}>
                 <HeartIcon size={20} color={liked ? colors.accent : colors.text} filled={liked} />
               </Pressable>
               <Pressable style={styles.roundBtn} hitSlop={8} accessibilityLabel="Поделиться" onPress={onSharePress}>

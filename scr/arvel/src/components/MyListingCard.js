@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { View, Text, StyleSheet, Pressable, Image } from 'react-native';
 import { colors, spacing, radius, font } from '../theme';
-import { CheckCircle, TeeIcon, TrashIcon } from './Icons';
+import { CheckCircle, TeeIcon, TrashIcon, MoreIcon } from './Icons';
 import ConfirmDialog from './ConfirmDialog';
 import { useMoney } from '../context/AppConfigContext';
 import { resolveMediaUrl } from '../utils/media';
@@ -45,27 +45,29 @@ export default function MyListingCard({ product, onPress, onMarkSold, onDelete }
 
       <View style={styles.menuWrap}>
         <Pressable style={styles.menuBtn} hitSlop={8} accessibilityLabel="Меню объявления" onPress={() => setMenuOpen((v) => !v)}>
-          <TrashIcon size={16} color={colors.text} />
+          <MoreIcon size={18} color={colors.text} />
         </Pressable>
-
-        {menuOpen && (
-          <View style={styles.dropdown}>
-            {!sold && (
-              <Pressable
-                style={[styles.dropdownItem, styles.dropdownItemBorder]}
-                onPress={() => { setMenuOpen(false); onMarkSold(product.id); }}
-              >
-                <CheckCircle size={16} />
-                <Text style={styles.dropdownText}>Отметить проданным</Text>
-              </Pressable>
-            )}
-            <Pressable style={styles.dropdownItem} onPress={askDelete}>
-              <TrashIcon size={16} color={colors.danger} />
-              <Text style={[styles.dropdownText, styles.dropdownTextDanger]}>Удалить объявление</Text>
-            </Pressable>
-          </View>
-        )}
       </View>
+
+      {/* Меню растягиваем по ширине карточки, а не от кнопки влево: карточка
+          в две колонки уже 190 px, и у левой меню уезжало за край экрана. */}
+      {menuOpen && (
+        <View style={styles.dropdown}>
+          {!sold && (
+            <Pressable
+              style={[styles.dropdownItem, styles.dropdownItemBorder]}
+              onPress={() => { setMenuOpen(false); onMarkSold(product.id); }}
+            >
+              <CheckCircle size={16} />
+              <Text style={styles.dropdownText}>Отметить проданным</Text>
+            </Pressable>
+          )}
+          <Pressable style={styles.dropdownItem} onPress={askDelete}>
+            <TrashIcon size={16} color={colors.danger} />
+            <Text style={[styles.dropdownText, styles.dropdownTextDanger]}>Удалить объявление</Text>
+          </Pressable>
+        </View>
+      )}
 
       <ConfirmDialog
         visible={confirmVisible}
@@ -123,7 +125,7 @@ const styles = StyleSheet.create({
     alignItems: 'center', justifyContent: 'center',
   },
   dropdown: {
-    position: 'absolute', top: 38, right: 0, minWidth: 190,
+    position: 'absolute', top: spacing.sm + 40, left: spacing.sm, right: spacing.sm,
     backgroundColor: colors.surface, borderRadius: radius.md,
     borderWidth: 1, borderColor: colors.border,
     overflow: 'hidden', zIndex: 20, elevation: 8,
@@ -133,6 +135,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.md, paddingVertical: spacing.md,
   },
   dropdownItemBorder: { borderBottomWidth: 1, borderBottomColor: colors.border },
-  dropdownText: { color: colors.text, fontSize: font.sizeSM, fontWeight: '600' },
+  dropdownText: { flexShrink: 1, color: colors.text, fontSize: font.sizeSM, fontWeight: '600' },
   dropdownTextDanger: { color: colors.danger },
 });

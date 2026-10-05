@@ -332,6 +332,37 @@ describe('ПРОДАВЕЦ', () => {
       expect(navigation.goBack).toHaveBeenCalled();
     });
 
+    // Заполненная форма не должна закрываться молча: «Назад» сначала спрашивает.
+    const leaveEvent = () => ({ preventDefault: jest.fn(), data: { action: { type: 'GO_BACK' } } });
+
+    it('«Назад» с пустой формой уходит без вопроса', async () => {
+      await renderForm();
+      const event = leaveEvent();
+      act(() => navigation.emit('beforeRemove', event));
+      expect(event.preventDefault).not.toHaveBeenCalled();
+      expect(screen.queryByText('Выйти без сохранения?')).toBeNull();
+    });
+
+    it('«Назад» с заполненной формой -> «Выйти без сохранения?» -> Остаться', async () => {
+      await renderForm();
+      fireEvent.changeText(screen.getByPlaceholderText('Например, Air Max 90'), 'Samba');
+      const event = leaveEvent();
+      act(() => navigation.emit('beforeRemove', event));
+      expect(event.preventDefault).toHaveBeenCalled();
+      expect(screen.getByText('Выйти без сохранения?')).toBeTruthy();
+      fireEvent.press(screen.getByText('Остаться'));
+      expect(navigation.dispatch).not.toHaveBeenCalled();
+      expect(screen.getByPlaceholderText('Например, Air Max 90').props.value).toBe('Samba');
+    });
+
+    it('«Выйти без сохранения?» -> Выйти', async () => {
+      await renderForm();
+      fireEvent.changeText(screen.getByPlaceholderText('8900'), '100');
+      act(() => navigation.emit('beforeRemove', leaveEvent()));
+      fireEvent.press(screen.getByText('Выйти'));
+      expect(navigation.dispatch).toHaveBeenCalledWith({ type: 'GO_BACK' });
+    });
+
     it('Баннер ошибки справочников -> повтор', async () => {
       listCategories.mockRejectedValueOnce(new Error('offline'));
       const cfg = setConfig(config);
