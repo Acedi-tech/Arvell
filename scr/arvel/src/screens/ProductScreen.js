@@ -1,5 +1,7 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, Pressable, ScrollView, Image, ActivityIndicator, Share } from 'react-native';
+import {
+  View, Text, StyleSheet, Pressable, ScrollView, Image, ActivityIndicator, Share, useWindowDimensions,
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { colors, spacing, radius, font } from '../theme';
 import { BackIcon, ShareIcon, StarIcon, ChatIcon, HeartIcon, TeeIcon } from '../components/Icons';
@@ -9,6 +11,7 @@ import { useAppConfig, useMoney, labelFor } from '../context/AppConfigContext';
 import { useAuth } from '../context/AuthContext';
 import { resolveMediaUrl } from '../utils/media';
 import { productUrl } from '../utils/links';
+import RemoteImage from '../components/RemoteImage';
 
 export default function ProductScreen({ navigation, route }) {
   const id = route?.params?.id;
@@ -57,6 +60,8 @@ export default function ProductScreen({ navigation, route }) {
   const [product, setProduct] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [photoIndex, setPhotoIndex] = useState(0);
+  const { width } = useWindowDimensions();
 
   useEffect(() => {
     let cancelled = false;
@@ -103,7 +108,12 @@ export default function ProductScreen({ navigation, route }) {
 
   // В реальных данных нет поля "kind" (обувь/футболка) — общий плейсхолдер, пока нет фото.
   const Placeholder = TeeIcon;
-  const photoUrl = resolveMediaUrl(product.images?.[0]?.url);
+  // Все фото товара по порядку position — раньше показывалось только первое,
+  // и у лота из 10 вещей остальные 9 фото было не посмотреть.
+  const photoUrls = [...(product.images || [])]
+    .sort((a, b) => (a.position ?? 0) - (b.position ?? 0))
+    .map((img) => resolveMediaUrl(img.url))
+    .filter(Boolean);
   const liked = isFavorite(product.id);
   const brandLabel = product.brand?.name || '';
   const sizeLabel = product.size_value || (product.size_system === 'one_size' ? 'One size' : '—');
@@ -122,15 +132,32 @@ export default function ProductScreen({ navigation, route }) {
               перекрывала собой кнопки Back/Heart/Share (сами кнопки при
               этом оставались кликабельными благодаря pointerEvents="none"
               на фото, но были не видны). Теперь фото снизу, кнопки — сверху. */}
-          {photoUrl ? (
-            <Image source={{ uri: photoUrl }} style={styles.photoImage} resizeMode="cover" />
+          {photoUrls.length > 0 ? (
+            <ScrollView
+              horizontal
+              pagingEnabled
+              showsHorizontalScrollIndicator={false}
+              style={styles.photoImage}
+              onMomentumScrollEnd={(e) => setPhotoIndex(Math.round(e.nativeEvent.contentOffset.x / width))}
+            >
+              {photoUrls.map((url, i) => (
+                <RemoteImage
+                  key={url}
+                  uri={url}
+                  accessibilityLabel={`Фото ${i + 1} из ${photoUrls.length}`}
+                  style={{ width, height: '100%' }}
+                  placeholder={<ActivityIndicator color={colors.textMuted} />}
+                />
+              ))}
+            </ScrollView>
           ) : (
             <View style={styles.photoCenter}>
               <Placeholder size={130} />
             </View>
           )}
 
-          <SafeAreaView edges={['top']} style={styles.photoBar}>
+          {/* box-none: панель с кнопками не должна мешать листать фото под ней */}
+          <SafeAreaView edges={['top']} style={styles.photoBar} pointerEvents="box-none">
             <Pressable style={styles.roundBtn} hitSlop={8} accessibilityLabel="Назад" onPress={() => navigation.goBack()}>
               <BackIcon size={22} />
             </Pressable>
@@ -143,6 +170,11 @@ export default function ProductScreen({ navigation, route }) {
               </Pressable>
             </View>
           </SafeAreaView>
+          {photoUrls.length > 1 && (
+            <View style={styles.photoCounter} pointerEvents="none">
+              <Text style={styles.photoCounterText}>{photoIndex + 1} / {photoUrls.length}</Text>
+            </View>
+          )}
         </View>
 
         <View style={styles.body}>
@@ -251,6 +283,12 @@ const styles = StyleSheet.create({
   },
   photoCenter: { ...StyleSheet.absoluteFillObject, alignItems: 'center', justifyContent: 'center' },
   photoImage: { ...StyleSheet.absoluteFillObject },
+  photoCounter: {
+    position: 'absolute', right: spacing.md, bottom: spacing.md,
+    backgroundColor: 'rgba(0,0,0,0.55)', borderRadius: radius.sm,
+    paddingHorizontal: 10, paddingVertical: 4,
+  },
+  photoCounterText: { color: colors.text, fontSize: font.sizeXS, fontWeight: '700' },
 
   body: { padding: spacing.lg },
   titleRow: { flexDirection: 'row', alignItems: 'flex-start' },

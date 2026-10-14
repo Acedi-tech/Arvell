@@ -1,73 +1,96 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { View, Text, FlatList, StyleSheet, Pressable, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { colors, spacing, radius, font } from '../theme';
 import { SearchIcon } from '../components/Icons';
 import ProductCard from '../components/ProductCard';
+import CatalogFiltersSheet, { EMPTY_FILTERS, SORT_OPTIONS, countActiveFilters } from '../components/CatalogFiltersSheet';
 import { listCategories, listBrands } from '../api/catalog';
 import { listProducts } from '../api/products';
+
+const PAGE_LIMIT = 20;
 
 export default function CatalogScreen({ navigation }) {
   const [categories, setCategories] = useState([]);
   const [brands, setBrands] = useState([]);
   const [categoryId, setCategoryId] = useState(null);
-  const [brandIds, setBrandIds] = useState([]);
+  const [subcategoryId, setSubcategoryId] = useState(null);
+  const [filters, setFilters] = useState(EMPTY_FILTERS);
+  const [filtersOpen, setFiltersOpen] = useState(false);
 
   const [products, setProducts] = useState([]);
+  const [cursor, setCursor] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
   const [error, setError] = useState(null);
+  // Номер запроса: ответ на устаревший набор фильтров не должен затирать новый.
+  const requestId = useRef(0);
 
   // Категории и бренды для чипсов — грузим один раз.
   useEffect(() => {
     listCategories()
-      .then((res) => setCategories((res.data || []).filter((c) => !c.parent_id)))
+      .then((res) => setCategories(res.data || []))
       .catch(() => {});
-    listBrands()
+    listBrands({ limit: 100 })
       .then((res) => setBrands(res.data || []))
       .catch(() => {});
   }, []);
 
-  // Список товаров — перезапрашиваем только при смене категории (сервер
-  // теперь реально фильтрует по category_id, проверено). brand_id сюда
-  // намеренно не передаём: API принимает только один brand_id, а чипсы
-  // брендов поддерживают множественный выбор — фильтрацию по (нескольким)
-  // брендам делаем на клиенте (см. visibleProducts ниже) поверх уже
-  // загруженного списка, это заодно даёт мгновенный отклик на выбор
-  // бренда, без похода в сеть.
+  const topCategories = categories.filter((c) => !c.parent_id);
+  const subcategories = categoryId ? categories.filter((c) => c.parent_id === categoryId) : [];
+
+  // Вся фильтрация — на сервере. Раньше бренд отбирался на телефоне и только
+  // среди первой страницы (20 товаров), поэтому часть товаров бренда пропадала,
+  // а цену, цвет, состояние, размер и сортировку выбрать было нельзя вовсе.
+  const query = useCallback((extra = {}) => {
+    const q = { categoryId: subcategoryId || categoryId, limit: PAGE_LIMIT, ...extra };
+    Object.entries(filters).forEach(([k, v]) => { if (v != null && v !== '') q[k] = v; });
+    return q;
+  }, [categoryId, subcategoryId, filters]);
+
   useEffect(() => {
-    let cancelled = false;
+    const id = ++requestId.current;
     setLoading(true);
     setError(null);
-    listProducts({ categoryId })
+    listProducts(query())
       .then((page) => {
-        if (!cancelled) setProducts(page.data || []);
+        if (id !== requestId.current) return;
+        setProducts(page.data || []);
+        setCursor(page.page?.has_more ? page.page.next_cursor : null);
       })
-      .catch((e) => {
-        if (!cancelled) setError(e);
+      .catch((e) => { if (id === requestId.current) setError(e); })
+      .finally(() => { if (id === requestId.current) setLoading(false); });
+  }, [query]);
+
+  const loadMore = () => {
+    if (!cursor || loading || loadingMore) return;
+    const id = requestId.current;
+    setLoadingMore(true);
+    listProducts(query({ cursor }))
+      .then((page) => {
+        if (id !== requestId.current) return;
+        setProducts((prev) => [...prev, ...(page.data || []).filter((p) => !prev.some((x) => x.id === p.id))]);
+        setCursor(page.page?.has_more ? page.page.next_cursor : null);
       })
-      .finally(() => {
-        if (!cancelled) setLoading(false);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [categoryId]);
+      .catch(() => {})
+      .finally(() => setLoadingMore(false));
+  };
 
-  // Фильтрация по бренду — на клиенте (см. комментарий выше), поддерживает
-  // сразу несколько выбранных брендов.
-  const visibleProducts = brandIds.length
-    ? products.filter((p) => p.brand && brandIds.includes(p.brand.id))
-    : products;
+  const toggleCategory = (id) => {
+    setSubcategoryId(null);
+    setCategoryId((c) => (c === id ? null : id));
+  };
+  const toggleSubcategory = (id) => setSubcategoryId((c) => (c === id ? null : id));
+  const toggleBrand = (id) => setFilters((f) => ({ ...f, brandId: f.brandId === id ? null : id }));
 
-  const toggleCategory = (id) => setCategoryId((c) => (c === id ? null : id));
-  const toggleBrand = (id) =>
-    setBrandIds((cur) => (cur.includes(id) ? cur.filter((x) => x !== id) : [...cur, id]));
+  const activeCount = countActiveFilters(filters);
+  const sortLabel = SORT_OPTIONS.find((o) => o.value === filters.sort)?.label;
 
   const Header = (
     <View>
       <Text style={styles.blockTitle}>Категории</Text>
       <View style={styles.catGrid}>
-        {categories.map((cat) => {
+        {topCategories.map((cat) => {
           const active = categoryId === cat.id;
           return (
             <Pressable
@@ -81,10 +104,27 @@ export default function CatalogScreen({ navigation }) {
         })}
       </View>
 
+      {subcategories.length > 0 && (
+        <View style={[styles.brandWrap, { marginTop: spacing.md }]}>
+          {subcategories.map((c) => {
+            const active = subcategoryId === c.id;
+            return (
+              <Pressable
+                key={c.id}
+                style={[styles.brandChip, active && styles.brandChipActive]}
+                onPress={() => toggleSubcategory(c.id)}
+              >
+                <Text style={[styles.brandText, active && styles.brandTextActive]}>{c.name}</Text>
+              </Pressable>
+            );
+          })}
+        </View>
+      )}
+
       <Text style={styles.blockTitle}>Бренды</Text>
       <View style={styles.brandWrap}>
         {brands.map((b) => {
-          const active = brandIds.includes(b.id);
+          const active = filters.brandId === b.id;
           return (
             <Pressable
               key={b.id}
@@ -98,6 +138,12 @@ export default function CatalogScreen({ navigation }) {
           );
         })}
       </View>
+
+      <Pressable style={styles.filtersBtn} onPress={() => setFiltersOpen(true)}>
+        <Text style={styles.filtersText}>
+          Фильтры{activeCount ? ` · ${activeCount}` : ''}{sortLabel ? ` · ${sortLabel}` : ''}
+        </Text>
+      </Pressable>
     </View>
   );
 
@@ -111,18 +157,21 @@ export default function CatalogScreen({ navigation }) {
       </Pressable>
 
       <FlatList
-        data={visibleProducts}
+        data={loading ? [] : products}
         keyExtractor={(item) => item.id}
         numColumns={2}
         ListHeaderComponent={Header}
         contentContainerStyle={styles.grid}
         showsVerticalScrollIndicator={false}
+        onEndReached={loadMore}
+        onEndReachedThreshold={0.5}
         renderItem={({ item }) => (
           <ProductCard
             product={item}
             onPress={() => navigation.navigate('Product', { id: item.id })}
           />
         )}
+        ListFooterComponent={loadingMore ? <ActivityIndicator color={colors.accent} style={{ marginVertical: spacing.lg }} /> : null}
         ListEmptyComponent={
           loading ? (
             <ActivityIndicator color={colors.accent} style={{ marginTop: spacing.xl }} />
@@ -132,6 +181,14 @@ export default function CatalogScreen({ navigation }) {
             </Text>
           )
         }
+      />
+
+      <CatalogFiltersSheet
+        visible={filtersOpen}
+        filters={filters}
+        brands={brands}
+        onClose={() => setFiltersOpen(false)}
+        onApply={(next) => { setFilters(next); setFiltersOpen(false); }}
       />
     </SafeAreaView>
   );
@@ -187,6 +244,13 @@ const styles = StyleSheet.create({
   brandChipActive: { backgroundColor: 'transparent', borderColor: colors.accent },
   brandText: { color: colors.text, fontSize: font.sizeMD, fontWeight: '600' },
   brandTextActive: { color: colors.accent },
+
+  filtersBtn: {
+    alignSelf: 'flex-start', marginHorizontal: spacing.sm, marginBottom: spacing.md,
+    paddingHorizontal: spacing.lg, paddingVertical: spacing.sm + 2,
+    borderRadius: radius.pill, borderWidth: 1.5, borderColor: colors.accent,
+  },
+  filtersText: { color: colors.accent, fontSize: font.sizeMD, fontWeight: '700' },
 
   grid: { paddingHorizontal: spacing.sm, paddingBottom: spacing.xl },
   empty: { color: colors.textMuted, textAlign: 'center', marginTop: spacing.xl },

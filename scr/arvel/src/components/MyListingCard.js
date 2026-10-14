@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, Pressable, Image } from 'react-native';
+import { View, Text, StyleSheet, Pressable } from 'react-native';
 import { colors, spacing, radius, font } from '../theme';
 import { CheckCircle, TeeIcon, TrashIcon, MoreIcon } from './Icons';
 import ConfirmDialog from './ConfirmDialog';
+import RemoteImage from './RemoteImage';
 import { useMoney } from '../context/AppConfigContext';
 import { resolveMediaUrl } from '../utils/media';
 
@@ -23,7 +24,7 @@ export default function MyListingCard({ product, onPress, onMarkSold, onDelete }
     <Pressable style={[styles.card, sold && styles.cardSold]} onPress={onPress}>
       <View style={styles.imageWrap}>
         {imageUrl ? (
-          <Image source={{ uri: imageUrl }} style={styles.image} resizeMode="cover" />
+          <RemoteImage uri={imageUrl} style={styles.image} placeholder={<TeeIcon size={90} />} />
         ) : (
           <TeeIcon size={90} />
         )}

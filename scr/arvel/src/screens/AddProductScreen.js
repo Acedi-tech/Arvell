@@ -15,6 +15,7 @@ import { listCategories, listBrands } from '../api/catalog';
 import { createProduct } from '../api/products';
 import { uploadImage } from '../api/media';
 import { toUploadAsset, prepareForUpload } from '../utils/imageUpload';
+import { sizeOptionsFor } from '../utils/sizes';
 
 const NO_BRAND = '';
 
@@ -63,22 +64,6 @@ function DropdownField({ label, value, placeholder, options, open, onToggle, onS
       )}
     </View>
   );
-}
-
-// Значения размера по правилу из GET /config → size_systems.
-// select — готовый список, numeric — min..max с шагом (без хвоста ".0").
-function sizeOptionsFor(rule) {
-  if (!rule) return [];
-  if (rule.input_type === 'select') return (rule.values || []).map(String);
-  if (rule.input_type === 'numeric') {
-    const out = [];
-    const count = Math.round((rule.max - rule.min) / rule.step);
-    for (let i = 0; i <= count; i += 1) {
-      out.push(String(Math.round((rule.min + i * rule.step) * 100) / 100));
-    }
-    return out;
-  }
-  return [];
 }
 
 // Текст ошибки API + подсказки по полям (422 приходит с fields[]).

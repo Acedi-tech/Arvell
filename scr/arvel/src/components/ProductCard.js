@@ -1,8 +1,9 @@
 import React from 'react';
-import { View, Text, StyleSheet, Pressable, Image } from 'react-native';
+import { View, Text, StyleSheet, Pressable } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { colors, spacing, radius, font } from '../theme';
 import { HeartIcon, TeeIcon, SneakerIcon } from './Icons';
+import RemoteImage from './RemoteImage';
 import { useFavorites } from '../context/FavoritesContext';
 import { useAuth } from '../context/AuthContext';
 import { useMoney } from '../context/AppConfigContext';
@@ -46,7 +47,7 @@ export default function ProductCard({ product, onPress }) {
     <Pressable style={styles.card} onPress={onPress}>
       <View style={styles.imageWrap}>
         {imageUrl ? (
-          <Image source={{ uri: imageUrl }} style={styles.image} resizeMode="cover" />
+          <RemoteImage uri={imageUrl} style={styles.image} placeholder={<Placeholder size={90} />} />
         ) : (
           <Placeholder size={90} />
         )}

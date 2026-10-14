@@ -1,10 +1,11 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { View, Text, TextInput, FlatList, StyleSheet, Pressable, ScrollView, ActivityIndicator, Image } from 'react-native';
+import { View, Text, TextInput, FlatList, StyleSheet, Pressable, ScrollView, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { colors, spacing, radius, font } from '../theme';
 import { resolveMediaUrl } from '../utils/media';
 import { SearchIcon, ClockIcon, CloseIcon, TeeIcon } from '../components/Icons';
+import RemoteImage from '../components/RemoteImage';
 import ProductCard from '../components/ProductCard';
 import { listProducts } from '../api/products';
 import { listBrands } from '../api/catalog';
@@ -211,7 +212,7 @@ export default function SearchScreen({ navigation }) {
               >
                 <View style={styles.forYouImg}>
                   {resolveMediaUrl(p.thumbnail_url) ? (
-                    <Image source={{ uri: resolveMediaUrl(p.thumbnail_url) }} style={styles.forYouPhoto} />
+                    <RemoteImage uri={resolveMediaUrl(p.thumbnail_url)} style={styles.forYouPhoto} placeholder={<TeeIcon size={72} />} />
                   ) : (
                     <TeeIcon size={72} />
                   )}

@@ -2,7 +2,7 @@
 // Разделы одинаковы у покупателя и продавца (один и тот же код экранов) —
 // различия по роли проверяются отдельными тестами в конце файла.
 import React from 'react';
-import { Share, FlatList } from 'react-native';
+import { Share, FlatList, Image } from 'react-native';
 import { render, screen, fireEvent, waitFor, act } from '@testing-library/react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
@@ -138,40 +138,88 @@ forEachRole(({ t }) => {
       it(t('Catalog: чип категории (одиночный выбор)', 'Catalog: чип категории'), async () => {
         render(<CatalogScreen navigation={navigation} />);
         await screen.findByText('Air Max 90');
-        // Подкатегории в чипах не показываются.
+        // Подкатегории видны только внутри выбранной категории.
         expect(screen.queryByText('Кроссовки')).toBeNull();
-        expect(listProducts).toHaveBeenLastCalledWith({ categoryId: null });
+        expect(listProducts).toHaveBeenLastCalledWith({ categoryId: null, limit: 20 });
 
         fireEvent.press(screen.getByText('Обувь'));
-        await waitFor(() => expect(listProducts).toHaveBeenLastCalledWith({ categoryId: 'c1' }));
+        await waitFor(() => expect(listProducts).toHaveBeenLastCalledWith({ categoryId: 'c1', limit: 20 }));
         fireEvent.press(screen.getByText('Одежда'));
-        await waitFor(() => expect(listProducts).toHaveBeenLastCalledWith({ categoryId: 'c2' }));
+        await waitFor(() => expect(listProducts).toHaveBeenLastCalledWith({ categoryId: 'c2', limit: 20 }));
         // Повторный тап снимает выбор.
         fireEvent.press(screen.getByText('Одежда'));
-        await waitFor(() => expect(listProducts).toHaveBeenLastCalledWith({ categoryId: null }));
+        await waitFor(() => expect(listProducts).toHaveBeenLastCalledWith({ categoryId: null, limit: 20 }));
       });
 
-      it(t('Catalog: чип бренда (множественный выбор)', 'Catalog: чип бренда'), async () => {
+      it('Catalog: подкатегория выбранной категории', async () => {
         render(<CatalogScreen navigation={navigation} />);
         await screen.findByText('Air Max 90');
-        const callsBefore = listProducts.mock.calls.length;
+        fireEvent.press(screen.getByText('Обувь'));
+        fireEvent.press(await screen.findByText('Кроссовки'));
+        await waitFor(() => expect(listProducts).toHaveBeenLastCalledWith({ categoryId: 'c3', limit: 20 }));
+      });
 
+      it(t('Catalog: чип бренда (фильтр на сервере)', 'Catalog: чип бренда'), async () => {
+        render(<CatalogScreen navigation={navigation} />);
+        await screen.findByText('Air Max 90');
         // Первый «Nike» — чип в шапке, второй — бренд на карточке товара.
         fireEvent.press(screen.getAllByText('Nike')[0]);
-        expect(screen.getByText('Air Max 90')).toBeTruthy();
-        expect(screen.queryByText('Samba')).toBeNull();
-        expect(screen.queryByText('Suede')).toBeNull();
-
+        await waitFor(() => expect(listProducts).toHaveBeenLastCalledWith({ categoryId: null, limit: 20, brandId: 'b1' }));
+        // Второй бренд заменяет первый: сервер принимает один brand_id.
         fireEvent.press(screen.getAllByText('Adidas')[0]);
-        expect(screen.getByText('Air Max 90')).toBeTruthy();
-        expect(screen.getByText('Samba')).toBeTruthy();
-        expect(screen.queryByText('Suede')).toBeNull();
+        await waitFor(() => expect(listProducts).toHaveBeenLastCalledWith({ categoryId: null, limit: 20, brandId: 'b2' }));
+        fireEvent.press(screen.getAllByText('Adidas')[0]);
+        await waitFor(() => expect(listProducts).toHaveBeenLastCalledWith({ categoryId: null, limit: 20 }));
+      });
 
-        fireEvent.press(screen.getAllByText('Nike')[0]);
-        expect(screen.queryByText('Air Max 90')).toBeNull();
-        expect(screen.getByText('Samba')).toBeTruthy();
-        // Бренды фильтруются на клиенте, без новых запросов.
-        expect(listProducts.mock.calls.length).toBe(callsBefore);
+      it('Catalog: окно «Фильтры» -> сортировка, цена, цвет, состояние, размер', async () => {
+        setConfig({
+          colors: [{ value: 'black', label: 'Чёрный' }],
+          conditions: [{ value: 'like_new', label: 'Как новое' }],
+          sizeSystems: [{ system: 'alpha', label: 'Буквенные размеры', input_type: 'select', values: ['S', 'M'] }],
+        });
+        render(<CatalogScreen navigation={navigation} />);
+        await screen.findByText('Air Max 90');
+        fireEvent.press(screen.getByText('Фильтры'));
+        fireEvent.press(screen.getByText('Дешевле'));
+        fireEvent.changeText(screen.getByPlaceholderText('от'), '1000');
+        fireEvent.changeText(screen.getByPlaceholderText('до'), '5000');
+        fireEvent.press(screen.getByText('Чёрный'));
+        fireEvent.press(screen.getByText('Как новое'));
+        fireEvent.press(screen.getByText('Буквенные размеры'));
+        fireEvent.press(screen.getByText('M'));
+        fireEvent.press(screen.getByText('Показать'));
+        await waitFor(() => expect(listProducts).toHaveBeenLastCalledWith({
+          categoryId: null, limit: 20, sort: 'price_asc', priceMin: 100000, priceMax: 500000,
+          color: 'black', condition: 'like_new', sizeSystem: 'alpha', sizeValue: 'M',
+        }));
+        // На кнопке видно, сколько фильтров выбрано и как отсортировано.
+        expect(screen.getByText('Фильтры · 5 · Дешевле')).toBeTruthy();
+      });
+
+      it('Catalog: «Сбросить» в фильтрах', async () => {
+        setConfig({ colors: [{ value: 'black', label: 'Чёрный' }], conditions: [], sizeSystems: [] });
+        render(<CatalogScreen navigation={navigation} />);
+        await screen.findByText('Air Max 90');
+        fireEvent.press(screen.getByText('Фильтры'));
+        fireEvent.press(screen.getByText('Чёрный'));
+        fireEvent.press(screen.getByText('Показать'));
+        await waitFor(() => expect(listProducts).toHaveBeenLastCalledWith({ categoryId: null, limit: 20, color: 'black' }));
+        fireEvent.press(screen.getByText('Фильтры · 1'));
+        fireEvent.press(screen.getByText('Сбросить'));
+        fireEvent.press(screen.getByText('Показать'));
+        await waitFor(() => expect(listProducts).toHaveBeenLastCalledWith({ categoryId: null, limit: 20 }));
+      });
+
+      it('Catalog: прокрутка до конца подгружает следующую страницу', async () => {
+        listProducts
+          .mockResolvedValueOnce({ data: [nike, adidas], page: { has_more: true, next_cursor: 'cur2' } })
+          .mockResolvedValueOnce({ data: [puma], page: { has_more: false } });
+        render(<CatalogScreen navigation={navigation} />);
+        await screen.findByText('Samba');
+        act(() => { screen.UNSAFE_getByType(FlatList).props.onEndReached(); });
+        expect(await screen.findByText('Suede')).toBeTruthy();
+        expect(listProducts).toHaveBeenLastCalledWith({ categoryId: null, limit: 20, cursor: 'cur2' });
       });
 
       it('Catalog: карточка товара -> Product', async () => {
@@ -342,6 +390,29 @@ forEachRole(({ t }) => {
       expect(screen.getByText('42')).toBeTruthy();
       expect(screen.getByText('Отличное')).toBeTruthy();
       expect(getProduct).toHaveBeenCalledWith('p1');
+    });
+
+    it('Product: все фото товара в галерее по порядку, со счётчиком', async () => {
+      getProduct.mockResolvedValue({
+        ...product,
+        images: [
+          { url: '/media/files/c.jpg', position: 2 },
+          { url: '/media/files/a.jpg', position: 0 },
+          { url: '/media/files/b.jpg', position: 1 },
+        ],
+      });
+      render(<ProductScreen navigation={navigation} route={route} />);
+      await screen.findByText('Air Max 90');
+      const BASE = 'http://176.123.162.135:8081';
+      const shown = screen.UNSAFE_queryAllByType(Image).map((i) => i.props.source?.uri).filter((u) => u?.includes('/media/files/'));
+      expect(shown).toEqual([`${BASE}/media/files/a.jpg`, `${BASE}/media/files/b.jpg`, `${BASE}/media/files/c.jpg`]);
+      expect(screen.getByText('1 / 3')).toBeTruthy();
+    });
+
+    it('Product: одно фото — без счётчика', async () => {
+      render(<ProductScreen navigation={navigation} route={route} />);
+      await screen.findByText('Air Max 90');
+      expect(screen.queryByText('1 / 1')).toBeNull();
     });
 
     it('Product: кнопка «Назад»', async () => {
