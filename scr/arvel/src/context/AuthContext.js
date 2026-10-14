@@ -31,12 +31,17 @@ function normalizeUser(apiUser, extra = {}) {
 
 const digitsOnly = (s) => String(s ?? '').replace(/\D/g, '');
 
-// Если имя при регистрации не передали, бэкенд кладёт в display_name номер
-// телефона. Такое «имя» не показываем в полях ввода — там должно быть пусто.
+// Имя, которое бэкенд ставит сам, если человек его не вводил: раньше это был
+// номер телефона, теперь — «Пользователь». Такое «имя» не считаем настоящим:
+// после регистрации спрашиваем имя, а в полях ввода оставляем пусто.
+const DEFAULT_NAMES = ['пользователь', 'user'];
+
 export function isPlaceholderName(user) {
   const name = String(user?.display_name ?? '').trim();
   const phone = digitsOnly(user?.phone);
-  return !name || (!!phone && digitsOnly(name) === phone);
+  return !name
+    || DEFAULT_NAMES.includes(name.toLowerCase())
+    || (!!phone && digitsOnly(name) === phone);
 }
 
 // Аккаунт, созданный меньше этого времени назад, считаем только что

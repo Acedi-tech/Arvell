@@ -53,6 +53,12 @@ describe('isPlaceholderName', () => {
     expect(isPlaceholderName({ display_name: 'Иван', phone: '+79990001122' })).toBe(false);
     expect(isPlaceholderName(null)).toBe(true);
   });
+
+  it('«Пользователь» — имя по умолчанию от бэкенда, тоже заглушка', () => {
+    expect(isPlaceholderName({ display_name: 'Пользователь', phone: '+79990001122' })).toBe(true);
+    expect(isPlaceholderName({ display_name: ' пользователь ', phone: '+79990001122' })).toBe(true);
+    expect(isPlaceholderName({ display_name: 'Пользователь Иван', phone: '+79990001122' })).toBe(false);
+  });
 });
 
 describe('холодный старт', () => {
@@ -137,6 +143,12 @@ describe('вход по телефону', () => {
     expect(result.current.isLoggedIn).toBe(false);
     expect(result.current.pendingUser).toBeTruthy();
     expect(await storedAccess()).toBe('acc');
+  });
+
+  it('новый покупатель с именем «Пользователь» от сервера — спрашиваем имя', async () => {
+    const { result, res } = await login({ id: 'u1', display_name: 'Пользователь', phone: '+79990001122', role: 'user', created_at: now() });
+    expect(res.needsOnboarding).toBe(true);
+    expect(result.current.isLoggedIn).toBe(false);
   });
 
   it('существующий аккаунт — сразу вход', async () => {
