@@ -157,8 +157,14 @@ describe('вход по телефону', () => {
     expect(result.current.isLoggedIn).toBe(true);
   });
 
-  it('старый аккаунт без имени не отправляется на онбординг (не затираем профиль)', async () => {
-    const { result, res } = await login({ id: 'u1', display_name: '+79990001122', phone: '+79990001122', role: 'user', created_at: oldDate });
+  it('старый аккаунт, так и оставшийся «Пользователем», тоже спрашивает имя', async () => {
+    const { result, res } = await login({ id: 'u1', display_name: 'Пользователь', phone: '+79990001122', role: 'user', created_at: oldDate });
+    expect(res.needsOnboarding).toBe(true);
+    expect(result.current.isLoggedIn).toBe(false);
+  });
+
+  it('старый аккаунт с настоящим именем на онбординг не попадает (профиль не затираем)', async () => {
+    const { result, res } = await login({ id: 'u1', display_name: 'Иван', phone: '+79990001122', role: 'user', created_at: oldDate });
     expect(res.needsOnboarding).toBe(false);
     expect(result.current.isLoggedIn).toBe(true);
   });
