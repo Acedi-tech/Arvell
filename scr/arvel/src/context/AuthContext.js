@@ -238,11 +238,24 @@ export function AuthProvider({ children }) {
     }
   }, []);
 
+  // После удаления аккаунта токены на сервере уже недействительны, поэтому
+  // /auth/logout не зовём — только чистим сессию на устройстве. Если сервер
+  // отказал, сессия остаётся: человек увидит ошибку и сможет повторить.
+  const deleteAccount = useCallback(async () => {
+    await meApi.deleteMe();
+    sessionEpoch.current += 1;
+    setIsLoggedIn(false);
+    setUser(null);
+    setPendingUser(null);
+    setPendingPhone(null);
+    await clearSession();
+  }, []);
+
   const value = {
     isLoggedIn, bootstrapping, user, pendingPhone, pendingUser,
     registerPhone, verifyCode, completeOnboarding,
     sellerAcceptInvite, sellerComplete,
-    updateProfile, signOut,
+    updateProfile, signOut, deleteAccount,
   };
 
   return (

@@ -140,6 +140,32 @@ describe('ПОКУПАТЕЛЬ', () => {
       expect(navigation.parent.navigate).toHaveBeenCalledWith('Feed');
     });
 
+    it('«Удалить аккаунт» -> подтверждение -> deleteAccount', async () => {
+      const auth = setAuth();
+      renderAccount();
+      fireEvent.press(screen.getByText('Удалить аккаунт'));
+      expect(screen.getByText('Удалить аккаунт?')).toBeTruthy();
+      fireEvent.press(screen.getByText('Удалить'));
+      await waitFor(() => expect(auth.deleteAccount).toHaveBeenCalledTimes(1));
+    });
+
+    it('«Удалить аккаунт» -> «Отмена» ничего не удаляет', () => {
+      const auth = setAuth();
+      renderAccount();
+      fireEvent.press(screen.getByText('Удалить аккаунт'));
+      fireEvent.press(screen.getByText('Отмена'));
+      expect(auth.deleteAccount).not.toHaveBeenCalled();
+    });
+
+    it('Сбой удаления аккаунта -> сообщение об ошибке', async () => {
+      const auth = setAuth();
+      auth.deleteAccount.mockRejectedValueOnce(new Error('Сервер не отвечает, попробуйте позже'));
+      renderAccount();
+      fireEvent.press(screen.getByText('Удалить аккаунт'));
+      fireEvent.press(screen.getByText('Удалить'));
+      await waitFor(() => expect(Alert.alert).toHaveBeenCalledWith('Не удалось удалить аккаунт', 'Сервер не отвечает, попробуйте позже'));
+    });
+
     it('Строка «Админ-панель» не видна обычному покупателю', () => {
       renderAccount();
       expect(screen.queryByText('Админ-панель')).toBeNull();

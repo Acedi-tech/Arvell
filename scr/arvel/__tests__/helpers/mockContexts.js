@@ -28,6 +28,7 @@ function defaultAuth() {
     sellerComplete: jest.fn(async () => ({})),
     updateProfile: jest.fn(async () => ({})),
     signOut: jest.fn(async () => {}),
+    deleteAccount: jest.fn(async () => {}),
   };
 }
 

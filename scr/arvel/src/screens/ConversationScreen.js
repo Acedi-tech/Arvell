@@ -15,7 +15,7 @@ import { useAppConfig, useMoney, labelFor } from '../context/AppConfigContext';
 import { useAuth } from '../context/AuthContext';
 import { useChatUnread } from '../context/ChatUnreadContext';
 import {
-  openConversation, listMessages, sendMessage, markConversationRead,
+  openConversation, getConversation, listMessages, sendMessage, markConversationRead,
 } from '../api/chat';
 import { uploadImage } from '../api/media';
 import { prepareForUpload } from '../utils/imageUpload';
@@ -29,7 +29,12 @@ export default function ConversationScreen({ navigation, route }) {
   // Фото собеседника: из списка чатов/карточки товара, а при открытии чата
   // со страницы товара — из ответа openConversation.
   const [avatar, setAvatar] = useState(route?.params?.avatar || null);
-  const rating = route?.params?.rating ?? 4.9;
+  // Рейтинг показываем только настоящий: раньше при его отсутствии рисовалась
+  // выдуманная 4.9 (а в ответе /conversations рейтинга нет вовсе).
+  const rating = typeof route?.params?.rating === 'number' ? route.params.rating : null;
+  // Закрытый чат (собеседник удалил аккаунт и т.п.): сервер отвечает 409 на
+  // отправку, поэтому поле ввода прячем и объясняем почему.
+  const [closed, setClosed] = useState(route?.params?.status === 'closed');
   const phone = route?.params?.phone || null;
   const product = route?.params?.product || null;   // если пришли из «Купить»
   const fromBuy = route?.params?.fromBuy || false;
@@ -68,9 +73,12 @@ export default function ConversationScreen({ navigation, route }) {
     setLoadError(null);
     try {
       let id = route?.params?.conversationId || null;
-      if (!id && product?.id) {
+      if (id) {
+        getConversation(id).then((conv) => setClosed(conv?.status === 'closed')).catch(() => {});
+      } else if (product?.id) {
         const conv = await openConversation(product.id);
         id = conv.id;
+        setClosed(conv?.status === 'closed');
         if (conv.seller?.profile_pic_url) setAvatar(resolveMediaUrl(conv.seller.profile_pic_url));
       }
       if (!id) {
@@ -124,7 +132,12 @@ export default function ConversationScreen({ navigation, route }) {
       // Возвращаем написанное в поле, чтобы ничего не пропало
       setText((cur) => cur || t);
       setPendingImage(image);
-      Alert.alert('Не отправлено', e?.message || 'Попробуйте ещё раз.');
+      if (e?.status === 409) {
+        setClosed(true);
+        Alert.alert('Переписка закрыта', 'Отправлять сообщения в этот чат больше нельзя.');
+      } else {
+        Alert.alert('Не отправлено', e?.message || 'Попробуйте ещё раз.');
+      }
     } finally {
       setSending(false);
     }
@@ -175,10 +188,12 @@ export default function ConversationScreen({ navigation, route }) {
         </View>
         <View style={{ flex: 1 }}>
           <Text style={styles.name}>{name}</Text>
-          <View style={styles.ratingRow}>
-            <StarIcon size={14} />
-            <Text style={styles.rating}>{rating.toFixed(1)}</Text>
-          </View>
+          {rating != null && (
+            <View style={styles.ratingRow}>
+              <StarIcon size={14} />
+              <Text style={styles.rating}>{rating.toFixed(1)}</Text>
+            </View>
+          )}
         </View>
         {/* Бэкенд пока не отдаёт номер телефона продавца — кнопка звонка
             вела только к алерту «Номер недоступен» на каждый тап, что
@@ -257,41 +272,47 @@ export default function ConversationScreen({ navigation, route }) {
 
         {/* Поле ввода */}
         <SafeAreaView edges={['bottom']} style={styles.inputBarSafe}>
-          {pendingImage && (
-            <View style={styles.previewRow}>
-              <Image source={{ uri: pendingImage }} style={styles.previewImage} />
-              <Pressable hitSlop={8} style={styles.previewRemove} accessibilityLabel="Убрать фото" onPress={() => setPendingImage(null)}>
-                <CloseIcon size={14} color={colors.text} />
+          {closed ? (
+            <Text style={styles.closedNote}>Переписка закрыта — отправлять сообщения больше нельзя.</Text>
+          ) : (
+            <>
+            {pendingImage && (
+              <View style={styles.previewRow}>
+                <Image source={{ uri: pendingImage }} style={styles.previewImage} />
+                <Pressable hitSlop={8} style={styles.previewRemove} accessibilityLabel="Убрать фото" onPress={() => setPendingImage(null)}>
+                  <CloseIcon size={14} color={colors.text} />
+                </Pressable>
+              </View>
+            )}
+            <View style={styles.inputBar}>
+              <Pressable hitSlop={8} style={({ pressed }) => [styles.attachBtn, pressed && styles.btnPressed]} accessibilityLabel="Прикрепить фото" onPress={pickImage}>
+                <ImageIcon size={22} color={colors.textMuted} />
+              </Pressable>
+              <View style={styles.inputWrap}>
+                <TextInput
+                  style={styles.input}
+                  placeholder={pendingImage ? 'Подпись к фото...' : 'Сообщение...'}
+                  placeholderTextColor={colors.textMuted}
+                  value={text}
+                  onChangeText={setText}
+                  multiline
+                />
+              </View>
+              <Pressable
+                style={({ pressed }) => [
+                  styles.sendBtn,
+                  !text.trim() && !pendingImage && styles.sendBtnDisabled,
+                  pressed && styles.btnPressed,
+                ]}
+                accessibilityLabel="Отправить"
+                onPress={send}
+                disabled={(!text.trim() && !pendingImage) || !conversationId || sending}
+              >
+                <SendIcon size={19} color={(text.trim() || pendingImage) ? colors.accentText : colors.textFaint} />
               </Pressable>
             </View>
+            </>
           )}
-          <View style={styles.inputBar}>
-            <Pressable hitSlop={8} style={({ pressed }) => [styles.attachBtn, pressed && styles.btnPressed]} accessibilityLabel="Прикрепить фото" onPress={pickImage}>
-              <ImageIcon size={22} color={colors.textMuted} />
-            </Pressable>
-            <View style={styles.inputWrap}>
-              <TextInput
-                style={styles.input}
-                placeholder={pendingImage ? 'Подпись к фото...' : 'Сообщение...'}
-                placeholderTextColor={colors.textMuted}
-                value={text}
-                onChangeText={setText}
-                multiline
-              />
-            </View>
-            <Pressable
-              style={({ pressed }) => [
-                styles.sendBtn,
-                !text.trim() && !pendingImage && styles.sendBtnDisabled,
-                pressed && styles.btnPressed,
-              ]}
-              accessibilityLabel="Отправить"
-              onPress={send}
-              disabled={(!text.trim() && !pendingImage) || !conversationId || sending}
-            >
-              <SendIcon size={19} color={(text.trim() || pendingImage) ? colors.accentText : colors.textFaint} />
-            </Pressable>
-          </View>
         </SafeAreaView>
       </KeyboardAware>
 
@@ -363,6 +384,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.surface,
     borderTopWidth: 1, borderTopColor: colors.border,
   },
+  closedNote: { color: colors.textMuted, fontSize: font.sizeSM, textAlign: 'center', padding: spacing.lg },
   inputBar: {
     flexDirection: 'row', alignItems: 'flex-end', gap: spacing.sm,
     paddingHorizontal: spacing.md, paddingVertical: spacing.sm,

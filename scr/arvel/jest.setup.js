@@ -28,3 +28,15 @@ jest.mock('expo-navigation-bar', () => ({
   setButtonStyleAsync: jest.fn(async () => {}),
   setBackgroundColorAsync: jest.fn(async () => {}),
 }));
+
+// Защищённое хранилище (Keychain/Keystore) — в памяти; очищается перед
+// каждым тестом в jest.afterEnv.js.
+jest.mock('expo-secure-store', () => {
+  const store = new Map();
+  return {
+    __store: store,
+    getItemAsync: jest.fn(async (k) => (store.has(k) ? store.get(k) : null)),
+    setItemAsync: jest.fn(async (k, v) => { store.set(k, String(v)); }),
+    deleteItemAsync: jest.fn(async (k) => { store.delete(k); }),
+  };
+});

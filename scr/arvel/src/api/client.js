@@ -8,6 +8,8 @@ import { getTokens, setTokens, clearTokens } from '../storage/tokenStorage';
 // usesCleartextTraffic.
 export const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL || 'http://176.123.162.135:8081';
 
+const REQUEST_TIMEOUT_MS = 20000;
+
 // RFC 9457 problem-detail error, thrown for every non-2xx response.
 export class ApiError extends Error {
   constructor({ status, code, title, detail, fields }) {
@@ -74,7 +76,7 @@ async function parseError(res) {
 // here would create a cycle.
 async function rawRefresh() {
   const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 15000);
+  const timeout = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
   try {
     const res = await fetch(`${API_BASE_URL}/auth/refresh`, {
       method: 'POST',
@@ -131,9 +133,12 @@ export async function request(path, { method = 'GET', body, auth = true, retry =
   // сервер за NAT в другой сети) подвешивал fetch на неопределённое время —
   // экран так и оставался в состоянии "загрузка" без единой подсказки, что
   // пошло не так.
+  // 20 с, а не 15: тестовый сервер часто отвечает ровно через ~16 с (теряется
+  // первый пакет соединения), и с 15 с такие запросы обрывались за секунду
+  // до ответа.
   const send = async () => {
     const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 15000);
+    const timeout = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
     try {
       return await fetch(`${API_BASE_URL}${path}`, {
         method,

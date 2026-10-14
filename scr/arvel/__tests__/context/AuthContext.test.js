@@ -1,6 +1,7 @@
 import React from 'react';
 import { renderHook, act, waitFor } from '@testing-library/react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import * as SecureStore from 'expo-secure-store';
 import { AuthProvider, useAuth, isPlaceholderName } from '../../src/context/AuthContext';
 
 jest.mock('../../src/api/auth', () => ({
@@ -10,7 +11,7 @@ jest.mock('../../src/api/auth', () => ({
   sellerComplete: jest.fn(),
   logout: jest.fn(),
 }));
-jest.mock('../../src/api/me', () => ({ getMe: jest.fn(), updateMe: jest.fn() }));
+jest.mock('../../src/api/me', () => ({ getMe: jest.fn(), updateMe: jest.fn(), deleteMe: jest.fn() }));
 jest.mock('../../src/api/shops', () => ({ updateMyShop: jest.fn() }));
 
 const authApi = require('../../src/api/auth');
@@ -29,6 +30,7 @@ beforeEach(async () => {
   authApi.sellerComplete.mockReset();
   meApi.getMe.mockReset();
   meApi.updateMe.mockReset();
+  meApi.deleteMe.mockReset().mockResolvedValue(null);
   shopsApi.updateMyShop.mockReset();
   jest.spyOn(console, 'warn').mockImplementation(() => {});
 });
@@ -41,7 +43,7 @@ const session = (user) => ({ access_token: 'acc', refresh_token: 'ref', user });
 const renderAuth = () => renderHook(() => useAuth(), {
   wrapper: ({ children }) => <AuthProvider>{children}</AuthProvider>,
 });
-const storedAccess = () => AsyncStorage.getItem('arvell.access_token');
+const storedAccess = () => SecureStore.getItemAsync('arvell.access_token');
 const withTokens = () => client.setSession({ accessToken: 'acc', refreshToken: 'ref' });
 
 describe('isPlaceholderName', () => {
@@ -225,6 +227,23 @@ describe('выход и истечение сессии', () => {
     expect(result.current.user).toBeNull();
     expect(await storedAccess()).toBeNull();
     expect(authApi.logout).toHaveBeenCalledWith('ref');
+  });
+
+  it('deleteAccount: DELETE /me, сессия стёрта, logout не зовётся', async () => {
+    const { result } = await loggedIn();
+    await act(async () => { await result.current.deleteAccount(); });
+    expect(meApi.deleteMe).toHaveBeenCalledTimes(1);
+    expect(result.current.isLoggedIn).toBe(false);
+    expect(await storedAccess()).toBeNull();
+    expect(authApi.logout).not.toHaveBeenCalled();
+  });
+
+  it('deleteAccount: сервер отказал -> остаёмся в аккаунте', async () => {
+    meApi.deleteMe.mockRejectedValueOnce(new Error('offline'));
+    const { result } = await loggedIn();
+    await act(async () => { await expect(result.current.deleteAccount()).rejects.toThrow('offline'); });
+    expect(result.current.isLoggedIn).toBe(true);
+    expect(await storedAccess()).not.toBeNull();
   });
 
   it('signOut не падает, если сервер не ответил на logout', async () => {

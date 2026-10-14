@@ -12,6 +12,7 @@ jest.mock('../../src/context/AppConfigContext', () => require('../helpers/mockCo
 jest.mock('../../src/api/chat', () => ({
   listConversations: jest.fn(),
   openConversation: jest.fn(),
+  getConversation: jest.fn(),
   listMessages: jest.fn(),
   sendMessage: jest.fn(),
   markConversationRead: jest.fn(),
@@ -59,7 +60,8 @@ beforeEach(async () => {
   jest.spyOn(Alert, 'alert').mockImplementation(() => {});
   await AsyncStorage.clear();
   chatApi.listConversations.mockReset().mockResolvedValue({ data: conversations });
-  chatApi.openConversation.mockReset().mockResolvedValue({ id: 'c-new' });
+  chatApi.openConversation.mockReset().mockResolvedValue({ id: 'c-new', status: 'open' });
+  chatApi.getConversation.mockReset().mockResolvedValue({ id: 'c1', status: 'open' });
   chatApi.listMessages.mockReset().mockResolvedValue({ data: [] });
   chatApi.sendMessage.mockReset().mockImplementation(async (id, body) => ({
     id: `m-${body}`, sender_id: 'u1', body, created_at: new Date().toISOString(),
@@ -286,6 +288,27 @@ forEachRole(({ t }) => {
       await waitFor(() => expect(chatApi.sendMessage).toHaveBeenCalledWith('c1', 'Ещё продаёте?'));
       expect(await screen.findByText('Ещё продаёте?')).toBeTruthy();
       expect(messageInput().props.value).toBe('');
+    });
+
+    it('Conversation: закрытый чат — поля ввода нет, объяснение есть', async () => {
+      chatApi.getConversation.mockResolvedValue({ id: 'c1', status: 'closed' });
+      await renderConversation();
+      expect(await screen.findByText(/Переписка закрыта/)).toBeTruthy();
+      expect(screen.queryByLabelText('Отправить')).toBeNull();
+    });
+
+    it('Conversation: 409 на отправку -> чат помечается закрытым', async () => {
+      chatApi.sendMessage.mockRejectedValueOnce(Object.assign(new Error('closed'), { status: 409 }));
+      await renderConversation();
+      fireEvent.changeText(messageInput(), 'Ау');
+      fireEvent.press(screen.getByLabelText('Отправить'));
+      expect(await screen.findByText(/Переписка закрыта/)).toBeTruthy();
+      expect(Alert.alert).toHaveBeenCalledWith('Переписка закрыта', expect.any(String));
+    });
+
+    it('Conversation: без рейтинга звёздочка не рисуется (никаких выдуманных 4.9)', async () => {
+      await renderConversation({ params: { conversationId: 'c1', name: 'Alex Shop' } });
+      expect(screen.queryByText('4.9')).toBeNull();
     });
 
     it('Conversation: отправка фото с подписью', async () => {

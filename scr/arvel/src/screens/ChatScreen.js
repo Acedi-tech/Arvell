@@ -30,7 +30,9 @@ export default function ChatScreen({ navigation }) {
       id: c.id,
       name: (iAmSeller ? c.buyer?.display_name : c.seller?.shop_name) || 'Диалог',
       avatar: resolveMediaUrl(iAmSeller ? c.buyer?.profile_pic_url : c.seller?.profile_pic_url),
-      rating: c.seller?.rating,
+      // Рейтинг — у магазина; продавцу рядом с именем покупателя он ни к чему.
+      rating: iAmSeller ? null : c.seller?.rating,
+      status: c.status,
       phone: c.seller?.phone,
       last: c.last_message_preview || 'Нет сообщений',
       at: c.last_message_at || c.created_at,
@@ -83,7 +85,7 @@ export default function ChatScreen({ navigation }) {
   const handleRowPress = (item) => {
     if (selectMode) toggleSelected(item.id);
     else navigation.navigate('Conversation', {
-      conversationId: item.id, name: item.name, rating: item.rating, phone: item.phone, avatar: item.avatar,
+      conversationId: item.id, name: item.name, rating: item.rating, phone: item.phone, avatar: item.avatar, status: item.status,
     });
   };
 

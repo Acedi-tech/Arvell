@@ -1,4 +1,5 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import * as SecureStore from 'expo-secure-store';
 import { getTokens, setTokens, clearTokens } from '../../src/storage/tokenStorage';
 import { loadFavorites, saveFavorites, clearFavorites } from '../../src/storage/favoritesStorage';
 import { loadCachedProducts, saveCachedProducts } from '../../src/storage/productsCache';
@@ -13,6 +14,20 @@ describe('storage/tokenStorage', () => {
     expect(await getTokens()).toEqual({ accessToken: 'a', refreshToken: 'r' });
     await clearTokens();
     expect(await getTokens()).toEqual({ accessToken: null, refreshToken: null });
+  });
+
+  it('токены лежат в защищённом хранилище, а не в AsyncStorage', async () => {
+    await setTokens({ accessToken: 'a', refreshToken: 'r' });
+    expect(await SecureStore.getItemAsync('arvell.access_token')).toBe('a');
+    expect(await AsyncStorage.getItem('arvell.access_token')).toBeNull();
+  });
+
+  it('токены прежней версии из AsyncStorage переносятся и стираются', async () => {
+    await AsyncStorage.multiSet([['arvell.access_token', 'old-a'], ['arvell.refresh_token', 'old-r']]);
+    expect(await getTokens()).toEqual({ accessToken: 'old-a', refreshToken: 'old-r' });
+    expect(await SecureStore.getItemAsync('arvell.refresh_token')).toBe('old-r');
+    expect(await AsyncStorage.getItem('arvell.access_token')).toBeNull();
+    expect(await AsyncStorage.getItem('arvell.refresh_token')).toBeNull();
   });
 });
 

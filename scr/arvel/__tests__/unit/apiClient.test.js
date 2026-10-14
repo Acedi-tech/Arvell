@@ -5,6 +5,7 @@ let client;
 // Берётся заново после resetModules — иначе тест и клиент смотрели бы в
 // разные копии мока хранилища.
 let AsyncStorage;
+let SecureStore;
 const BASE = 'http://176.123.162.135:8081';
 
 const json = (status, body) => ({
@@ -19,6 +20,8 @@ const json = (status, body) => ({
 beforeEach(async () => {
   jest.resetModules();
   AsyncStorage = require('@react-native-async-storage/async-storage');
+  // После resetModules клиент получает свежий экземпляр мока — берём тот же.
+  SecureStore = require('expo-secure-store');
   await AsyncStorage.clear();
   client = require('../../src/api/client');
   global.fetch = jest.fn();
@@ -86,15 +89,28 @@ describe('request', () => {
     signal.addEventListener('abort', () => reject(Object.assign(new Error('aborted'), { name: 'AbortError' })));
   });
 
-  it('таймаут 15 секунд -> один повтор GET -> TIMEOUT без адреса сервера', async () => {
+  it('таймаут 20 секунд -> один повтор GET -> TIMEOUT без адреса сервера', async () => {
     jest.useFakeTimers();
     try {
       fetch.mockImplementationOnce(hang).mockImplementationOnce(hang);
       const pending = client.request('/me', { auth: false }).catch((e) => e);
-      await jest.advanceTimersByTimeAsync(30000);
+      await jest.advanceTimersByTimeAsync(40000);
       const err = await pending;
       expect(err).toMatchObject({ status: 0, code: 'TIMEOUT', message: 'Сервер не отвечает, попробуйте позже' });
       expect(fetch).toHaveBeenCalledTimes(2);
+    } finally {
+      jest.useRealTimers();
+    }
+  });
+
+  it('ответ на 16-й секунде не обрывается таймаутом', async () => {
+    jest.useFakeTimers();
+    try {
+      fetch.mockImplementationOnce(() => new Promise((resolve) => setTimeout(() => resolve(json(200, { ok: true })), 16000)));
+      const pending = client.request('/me', { auth: false });
+      await jest.advanceTimersByTimeAsync(16000);
+      expect(await pending).toEqual({ ok: true });
+      expect(fetch).toHaveBeenCalledTimes(1);
     } finally {
       jest.useRealTimers();
     }
@@ -105,7 +121,7 @@ describe('request', () => {
     try {
       fetch.mockImplementationOnce(hang).mockResolvedValueOnce(json(200, { ok: true }));
       const pending = client.request('/me', { auth: false });
-      await jest.advanceTimersByTimeAsync(15000);
+      await jest.advanceTimersByTimeAsync(20000);
       expect(await pending).toEqual({ ok: true });
     } finally {
       jest.useRealTimers();
@@ -117,7 +133,7 @@ describe('request', () => {
     try {
       fetch.mockImplementationOnce(hang);
       const pending = client.request('/products', { method: 'POST', body: {}, auth: false }).catch((e) => e);
-      await jest.advanceTimersByTimeAsync(15000);
+      await jest.advanceTimersByTimeAsync(20000);
       expect(await pending).toMatchObject({ code: 'TIMEOUT' });
       expect(fetch).toHaveBeenCalledTimes(1);
     } finally {
@@ -137,7 +153,7 @@ describe('обновление токенов', () => {
     expect(fetch.mock.calls[1][0]).toBe(`${BASE}/auth/refresh`);
     expect(JSON.parse(fetch.mock.calls[1][1].body)).toEqual({ refresh_token: 'refresh-1' });
     expect(authHeader(2)).toBe('Bearer access-2');
-    expect(await AsyncStorage.getItem('arvell.refresh_token')).toBe('refresh-2');
+    expect(await SecureStore.getItemAsync('arvell.refresh_token')).toBe('refresh-2');
   });
 
   it('параллельные запросы с истёкшим токеном делают ОДИН refresh', async () => {
@@ -162,7 +178,7 @@ describe('обновление токенов', () => {
     fetch.mockResolvedValueOnce(json(401, {})).mockResolvedValueOnce(json(401, { detail: 'refresh reused' }));
     await expect(client.request('/me')).rejects.toMatchObject({ status: 401 });
     expect(expired).toHaveBeenCalledTimes(1);
-    expect(await AsyncStorage.getItem('arvell.access_token')).toBeNull();
+    expect(await SecureStore.getItemAsync('arvell.access_token')).toBeNull();
   });
 
   it('5xx на refresh не разлогинивает — токены остаются', async () => {
@@ -172,7 +188,7 @@ describe('обновление токенов', () => {
     fetch.mockResolvedValueOnce(json(401, {})).mockResolvedValueOnce(json(503, {}));
     await expect(client.request('/me')).rejects.toMatchObject({ status: 503 });
     expect(expired).not.toHaveBeenCalled();
-    expect(await AsyncStorage.getItem('arvell.refresh_token')).toBe('refresh-1');
+    expect(await SecureStore.getItemAsync('arvell.refresh_token')).toBe('refresh-1');
   });
 
   it('401 без refresh-токена -> выход', async () => {
@@ -225,7 +241,7 @@ describe('обновление токенов', () => {
     await client.clearSession();
     resolveRefresh(json(200, { access_token: 'ghost', refresh_token: 'ghost-r' }));
     await pending;
-    expect(await AsyncStorage.getItem('arvell.access_token')).toBeNull();
+    expect(await SecureStore.getItemAsync('arvell.access_token')).toBeNull();
   });
 });
 
@@ -240,9 +256,9 @@ describe('сессия', () => {
 
   it('setSession / clearSession пишут в хранилище', async () => {
     await client.setSession({ accessToken: 'a2', refreshToken: 'r2' });
-    expect(await AsyncStorage.getItem('arvell.access_token')).toBe('a2');
+    expect(await SecureStore.getItemAsync('arvell.access_token')).toBe('a2');
     await client.clearSession();
-    expect(await AsyncStorage.getItem('arvell.access_token')).toBeNull();
+    expect(await SecureStore.getItemAsync('arvell.access_token')).toBeNull();
     expect(await client.hydrateSession()).toEqual({ accessToken: null, refreshToken: null });
   });
 });

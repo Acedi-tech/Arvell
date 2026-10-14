@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, Pressable, ScrollView, Image } from 'react-native';
+import { View, Text, StyleSheet, Pressable, ScrollView, Image, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Svg, { Path } from 'react-native-svg';
 import { colors, spacing, radius, font } from '../theme';
@@ -45,10 +45,12 @@ function SettingRow({ icon, label, onPress, danger }) {
 }
 
 export default function AccountScreen({ navigation }) {
-  const { user, signOut } = useAuth();
+  const { user, signOut, deleteAccount } = useAuth();
   const { count: favCount } = useFavorites();
   const { items: myListings } = useMyListings();
   const [logoutConfirmVisible, setLogoutConfirmVisible] = useState(false);
+  const [deleteConfirmVisible, setDeleteConfirmVisible] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
   const name = user?.name || 'Профиль';
   const initial = name.trim()[0]?.toUpperCase() || 'A';
@@ -61,6 +63,18 @@ export default function AccountScreen({ navigation }) {
   const myListingsCount = myListings.length;
 
   const confirmLogout = () => setLogoutConfirmVisible(true);
+
+  const handleDelete = async () => {
+    setDeleteConfirmVisible(false);
+    setDeleting(true);
+    try {
+      await deleteAccount();
+      // RootNavigator сам уведёт на экран входа: isLoggedIn стал false.
+    } catch (e) {
+      setDeleting(false);
+      Alert.alert('Не удалось удалить аккаунт', e?.message || 'Попробуйте ещё раз.');
+    }
+  };
 
   // ФИКС: guardTab в MainTabs перехватывает только переключение вкладки,
   // когда пользователь уже разлогинен — а не сам момент выхода, если
@@ -178,6 +192,14 @@ export default function AccountScreen({ navigation }) {
           />
         </View>
 
+        <Pressable
+          style={styles.deleteBtn}
+          disabled={deleting}
+          onPress={() => setDeleteConfirmVisible(true)}
+        >
+          <Text style={styles.deleteText}>{deleting ? 'Удаляем аккаунт…' : 'Удалить аккаунт'}</Text>
+        </Pressable>
+
         <Text style={styles.version}>ARVELL · версия {appConfig.expo.version}</Text>
       </ScrollView>
 
@@ -189,6 +211,18 @@ export default function AccountScreen({ navigation }) {
         cancelText="Отмена"
         onCancel={() => setLogoutConfirmVisible(false)}
         onConfirm={handleLogout}
+      />
+
+      <ConfirmDialog
+        visible={deleteConfirmVisible}
+        title="Удалить аккаунт?"
+        message={isSeller
+          ? 'Профиль, магазин и все объявления будут удалены без возможности восстановления.'
+          : 'Профиль, избранное и история будут удалены без возможности восстановления.'}
+        confirmText="Удалить"
+        cancelText="Отмена"
+        onCancel={() => setDeleteConfirmVisible(false)}
+        onConfirm={handleDelete}
       />
     </SafeAreaView>
   );
@@ -253,6 +287,8 @@ const styles = StyleSheet.create({
   setLabel: { flex: 1, color: colors.text, fontSize: font.sizeMD, fontWeight: '600' },
   rowDivider: { height: 1, backgroundColor: colors.border, marginLeft: 52 },
 
+  deleteBtn: { alignSelf: 'center', paddingVertical: spacing.md, paddingHorizontal: spacing.lg, marginTop: spacing.md },
+  deleteText: { color: colors.danger, fontSize: font.sizeSM, fontWeight: '600' },
   version: {
     color: colors.textFaint, fontSize: font.sizeXS,
     textAlign: 'center', marginTop: spacing.xl,

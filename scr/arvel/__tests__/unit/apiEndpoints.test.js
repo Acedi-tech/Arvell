@@ -105,6 +105,8 @@ describe('api/favorites, me, shops', () => {
     expect(lastCall()).toEqual(['/me']);
     me.updateMe({ display_name: 'X' });
     expect(lastCall()).toEqual(['/me', { method: 'PATCH', body: { display_name: 'X' } }]);
+    me.deleteMe();
+    expect(lastCall()).toEqual(['/me', { method: 'DELETE' }]);
     shops.getMyShop();
     expect(lastCall()).toEqual(['/me/shop']);
     shops.updateMyShop({ shop_name: 'S' });
