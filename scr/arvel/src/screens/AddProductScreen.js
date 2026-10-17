@@ -15,7 +15,7 @@ import { listCategories, listBrands } from '../api/catalog';
 import { createProduct } from '../api/products';
 import { uploadImage } from '../api/media';
 import { toUploadAsset, prepareForUpload } from '../utils/imageUpload';
-import { sizeOptionsFor } from '../utils/sizes';
+import { sizeOptionsFor, sizeSystemsForCategory } from '../utils/sizes';
 
 const NO_BRAND = '';
 
@@ -162,9 +162,37 @@ export default function AddProductScreen({ navigation }) {
     [brands]
   );
   const colorChoices = useMemo(() => colorOptions.map((c) => ({ value: c.value, label: c.label })), [colorOptions]);
-  const systemChoices = useMemo(() => sizeSystems.map((s) => ({ value: s.system, label: s.label })), [sizeSystems]);
+  // Названия и slug всех уровней выбранной категории — по ним отбираем
+  // подходящие системы размеров (см. sizeSystemsForCategory).
+  const categoryPath = useMemo(() => {
+    const byId = new Map(categories.map((c) => [c.id, c]));
+    const out = [];
+    for (let cur = byId.get(categoryId), guard = 0; cur && guard < 10; cur = byId.get(cur.parent_id), guard += 1) {
+      out.push(cur.name, cur.slug);
+    }
+    return out.filter(Boolean);
+  }, [categories, categoryId]);
+  const allowedSystems = useMemo(
+    () => sizeSystemsForCategory(sizeSystems, categoryPath),
+    [sizeSystems, categoryPath]
+  );
+  const systemChoices = useMemo(() => allowedSystems.map((s) => ({ value: s.system, label: s.label })), [allowedSystems]);
 
-  const rule = useMemo(() => sizeSystems.find((s) => s.system === sizeSystem) || null, [sizeSystems, sizeSystem]);
+  // Сменили категорию: система, которая к ней не подходит, сбрасывается, а
+  // единственный вариант (у сумок — «без размера») выбирается сам.
+  useEffect(() => {
+    if (allowedSystems.length === 1) {
+      if (sizeSystem !== allowedSystems[0].system) {
+        setSizeSystem(allowedSystems[0].system);
+        setSizeValue('');
+      }
+    } else if (sizeSystem && !allowedSystems.some((s) => s.system === sizeSystem)) {
+      setSizeSystem('');
+      setSizeValue('');
+    }
+  }, [allowedSystems, sizeSystem]);
+
+  const rule = useMemo(() => allowedSystems.find((s) => s.system === sizeSystem) || null, [allowedSystems, sizeSystem]);
   const sizeChoices = useMemo(() => sizeOptionsFor(rule).map((v) => ({ value: v, label: v })), [rule]);
 
   const inRange = (raw, min, max) => /^\d+$/.test(raw) && Number(raw) >= min && Number(raw) <= max;

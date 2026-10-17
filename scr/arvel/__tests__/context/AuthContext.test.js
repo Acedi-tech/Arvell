@@ -118,6 +118,39 @@ describe('холодный старт', () => {
   });
 });
 
+describe('холодный старт с сохранённым профилем', () => {
+  it('сразу входит из кэша, не дожидаясь /me, а /me потом обновляет профиль', async () => {
+    await withTokens();
+    await SecureStore.setItemAsync('arvell.user', JSON.stringify({ id: 'u1', display_name: 'Иван', name: 'Иван', created_at: oldDate }));
+    let resolveMe;
+    meApi.getMe.mockImplementation(() => new Promise((r) => { resolveMe = r; }));
+    const { result } = renderAuth();
+    await waitFor(() => expect(result.current.isLoggedIn).toBe(true));
+    expect(result.current.bootstrapping).toBe(false);
+    expect(result.current.user.name).toBe('Иван');
+    await act(async () => { resolveMe({ id: 'u1', display_name: 'Иван Петров', created_at: oldDate }); });
+    expect(result.current.user.name).toBe('Иван Петров');
+  });
+
+  it('из кэша вошли, но сервер отверг токен — разлогиниваем и стираем кэш', async () => {
+    await withTokens();
+    await SecureStore.setItemAsync('arvell.user', JSON.stringify({ id: 'u1', display_name: 'Иван', name: 'Иван' }));
+    meApi.getMe.mockRejectedValue(Object.assign(new Error('401'), { status: 401 }));
+    const { result } = renderAuth();
+    await waitFor(() => expect(meApi.getMe).toHaveBeenCalled());
+    await waitFor(() => expect(result.current.isLoggedIn).toBe(false));
+    expect(await SecureStore.getItemAsync('arvell.user')).toBeNull();
+  });
+
+  it('после входа профиль сохраняется для следующего запуска', async () => {
+    await withTokens();
+    meApi.getMe.mockResolvedValue({ id: 'u1', display_name: 'Иван', created_at: oldDate });
+    const { result } = renderAuth();
+    await waitFor(() => expect(result.current.isLoggedIn).toBe(true));
+    await waitFor(async () => expect(JSON.parse(await SecureStore.getItemAsync('arvell.user'))).toMatchObject({ id: 'u1' }));
+  });
+});
+
 describe('вход по телефону', () => {
   const login = async (user) => {
     authApi.verifyCode.mockResolvedValue(session(user));
@@ -203,6 +236,19 @@ describe('регистрация продавца', () => {
     expect(authApi.sellerComplete).toHaveBeenCalledWith(expect.objectContaining({ phone: '+79995550000', shopName: 'Shop' }));
     expect(result.current.isLoggedIn).toBe(true);
     expect(meApi.updateMe).not.toHaveBeenCalled();
+  });
+
+  // Телефон уже был покупателем «Пользователь»: бэкенд при повышении до
+  // продавца display_name игнорирует — имя дописываем через PATCH /me.
+  it('апгрейд покупателя: имя, проигнорированное бэкендом, сохраняется PATCH /me', async () => {
+    const { result } = await setup();
+    authApi.sellerComplete.mockResolvedValue(session({ id: 's1', display_name: 'Пользователь', role: 'seller' }));
+    meApi.updateMe.mockResolvedValue({ id: 's1', display_name: 'Алекс', role: 'seller' });
+    await act(async () => {
+      await result.current.sellerComplete({ inviteToken: 'INV', code: '1234', shopName: 'Shop', displayName: ' Алекс ' });
+    });
+    expect(meApi.updateMe).toHaveBeenCalledWith({ display_name: 'Алекс' });
+    expect(result.current.user.name).toBe('Алекс');
   });
 
   it('фото ставится в профиль и магазин', async () => {

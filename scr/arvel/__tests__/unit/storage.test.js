@@ -22,6 +22,15 @@ describe('storage/tokenStorage', () => {
     expect(await AsyncStorage.getItem('arvell.access_token')).toBeNull();
   });
 
+  // Если приложение закрыли посреди записи, старый refresh рядом с новым
+  // access остаться не должен: сервер уже погасил его при обновлении.
+  it('refresh-токен записывается раньше access-токена', async () => {
+    SecureStore.setItemAsync.mockClear();
+    await setTokens({ accessToken: 'a', refreshToken: 'r' });
+    expect(SecureStore.setItemAsync.mock.calls.map(([key]) => key))
+      .toEqual(['arvell.refresh_token', 'arvell.access_token']);
+  });
+
   it('токены прежней версии из AsyncStorage переносятся и стираются', async () => {
     await AsyncStorage.multiSet([['arvell.access_token', 'old-a'], ['arvell.refresh_token', 'old-r']]);
     expect(await getTokens()).toEqual({ accessToken: 'old-a', refreshToken: 'old-r' });

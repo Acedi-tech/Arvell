@@ -4,6 +4,7 @@ import { productUrl, APP_SCHEME, SHARE_BASE_URL } from '../../src/utils/links';
 import { isImageBody, formatTime } from '../../src/utils/chatFormat';
 import { guessContentType, toUploadAsset, prepareForUpload } from '../../src/utils/imageUpload';
 import { API_BASE_URL } from '../../src/api/client';
+import { sizeSystemsForCategory } from '../../src/utils/sizes';
 import { ImageManipulator } from 'expo-image-manipulator';
 
 // ru-RU разделяет разряды неразрывным пробелом — нормализуем для сравнения.
@@ -149,5 +150,30 @@ describe('utils/imageUpload', () => {
       expect(out.uri).toBe('file:///out-0.55.jpg');
       expect(out.filename).toBe('photo.jpg');
     });
+  });
+});
+
+describe('utils/sizes — системы размеров по категории', () => {
+  const systems = [
+    { system: 'alpha', input_type: 'select' },
+    { system: 'eu_clothing', input_type: 'select' },
+    { system: 'eu_shoe', input_type: 'numeric' },
+    { system: 'waist_inseam', input_type: 'waist_inseam' },
+    { system: 'one_size', input_type: 'none' },
+  ];
+  const ids = (list) => list.map((s) => s.system);
+
+  it('сумки — только «без размера», без одежды и обуви', () => {
+    expect(ids(sizeSystemsForCategory(systems, ['Сумки', 'bags', 'Аксессуары', 'accessories']))).toEqual(['one_size']);
+  });
+  it('обувь — обувные системы и «без размера»', () => {
+    expect(ids(sizeSystemsForCategory(systems, ['Кроссовки', 'Обувь']))).toEqual(['eu_shoe', 'one_size']);
+  });
+  it('одежда — без обувных систем', () => {
+    expect(ids(sizeSystemsForCategory(systems, ['Джинсы', 'Одежда']))).toEqual(['alpha', 'eu_clothing', 'waist_inseam', 'one_size']);
+  });
+  it('незнакомая или не выбранная категория — все системы', () => {
+    expect(sizeSystemsForCategory(systems, ['Ремни', 'Аксессуары'])).toBe(systems);
+    expect(sizeSystemsForCategory(systems, [])).toBe(systems);
   });
 });

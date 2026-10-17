@@ -287,6 +287,10 @@ describe('ПРОДАВЕЦ', () => {
       { id: 'root', name: 'Обувь', is_leaf: false },
       { id: 'sneakers', name: 'Кроссовки', parent_id: 'root', is_leaf: true },
       { id: 'boots', name: 'Ботинки', parent_id: 'root', is_leaf: true },
+      { id: 'clothes', name: 'Одежда', is_leaf: false },
+      { id: 'jeans', name: 'Джинсы', parent_id: 'clothes', is_leaf: true },
+      { id: 'acc', name: 'Аксессуары', is_leaf: false },
+      { id: 'bags', name: 'Сумки', parent_id: 'acc', is_leaf: true },
     ];
     const brands = [{ id: 'b1', name: 'Nike' }, { id: 'b2', name: 'Adidas' }];
 
@@ -526,7 +530,8 @@ describe('ПРОДАВЕЦ', () => {
     it('Опубликовать: джинсы уходят размером «талия x шов»', async () => {
       await renderForm();
       await fillValidForm();
-      choose('EU (обувь)', 'Джинсы');
+      choose('Обувь › Кроссовки', 'Одежда › Джинсы');
+      choose('Выберите систему', 'Джинсы');
       fireEvent.changeText(screen.getByPlaceholderText('24–40'), '32');
       fireEvent.changeText(screen.getByPlaceholderText('28–36'), '99'); // вне диапазона
       fireEvent.press(publishBtn());
@@ -536,6 +541,23 @@ describe('ПРОДАВЕЦ', () => {
       await waitFor(() => expect(createProduct).toHaveBeenCalledWith(expect.objectContaining({
         size_system: 'jeans', size_value: '32x34',
       })));
+    });
+
+    // QA 15.10: для сумок предлагались размеры одежды и обуви.
+    it('Сумки: только «Без размера», выбирается само; у обуви нет размеров одежды', async () => {
+      await renderForm();
+      choose('Выберите категорию', 'Обувь › Кроссовки');
+      fireEvent.press(screen.getByText('Выберите систему'));
+      expect(screen.getByText('EU (обувь)')).toBeTruthy();
+      expect(screen.queryByText('Буквенный')).toBeNull();
+      expect(screen.queryByText('Джинсы')).toBeNull();
+      fireEvent.press(screen.getByText('EU (обувь)'));
+      choose('Обувь › Кроссовки', 'Аксессуары › Сумки');
+      expect(screen.getByText('Без размера')).toBeTruthy();
+      expect(screen.queryByText('Выберите размер')).toBeNull();
+      fireEvent.press(screen.getByText('Без размера'));
+      expect(screen.queryByText('EU (обувь)')).toBeNull();
+      expect(screen.queryByText('Буквенный')).toBeNull();
     });
 
     it('Экран успеха -> «Отлично»', async () => {

@@ -3,6 +3,7 @@ import * as authApi from '../api/auth';
 import * as meApi from '../api/me';
 import { updateMyShop } from '../api/shops';
 import { hydrateSession, setSession, clearSession, setOnSessionExpired } from '../api/client';
+import { getCachedUser, setCachedUser } from '../storage/tokenStorage';
 
 // Дольше этого холодный старт не ждёт ответа GET /me (см. useEffect ниже).
 const BOOTSTRAP_TIMEOUT_MS = 4000;
@@ -105,22 +106,39 @@ export function AuthProvider({ children }) {
         return;
       }
       const epoch = sessionEpoch.current;
+      // Аккаунт мог быть создан (verifyCode уже выдаёт токены), но так и не
+      // получить имя, если человек свернул/закрыл приложение на ProfileSetup
+      // до нажатия «Завершить». Раньше холодный старт логинил его сразу с
+      // именем-плейсхолдером (номером телефона) — регистрация как бы сама
+      // «завершалась» без ввода имени. Ведём себя как verifyCode: для
+      // такого аккаунта не логиним, а возвращаем на дозаполнение профиля.
+      const applyUser = (u) => {
+        if (needsOnboarding(u)) {
+          setIsLoggedIn(false);
+          setUser(null);
+          setPendingUser(u);
+          return;
+        }
+        setUser(u);
+        setPendingUser(null);
+        setIsLoggedIn(true);
+      };
+      // Профиль с прошлого запуска открывает приложение сразу залогиненным.
+      // Без него до ответа GET /me (на тестовом сервере это 5–10 с) человек
+      // считался гостем: тап по «Профилю», «Чату», «Купить» уходил в окно
+      // входа, которое тут же закрывалось, когда /me всё-таки приходил, —
+      // со стороны это выглядело как пропавшие нажатия. /me ниже всё равно
+      // идёт и обновляет профиль, а отозванный токен разлогинит как раньше.
+      const cached = await getCachedUser();
+      if (cached && !cancelled && epoch === sessionEpoch.current) {
+        applyUser(cached);
+        clearTimeout(timer);
+        setBootstrapping(false);
+      }
       try {
         const me = await meApi.getMe();
         if (cancelled || epoch !== sessionEpoch.current) return;
-        const normalized = normalizeUser(me);
-        // Аккаунт мог быть создан (verifyCode уже выдаёт токены), но так и не
-        // получить имя, если человек свернул/закрыл приложение на ProfileSetup
-        // до нажатия «Завершить». Раньше холодный старт логинил его сразу с
-        // именем-плейсхолдером (номером телефона) — регистрация как бы сама
-        // «завершалась» без ввода имени. Ведём себя как verifyCode: для
-        // такого аккаунта не логиним, а возвращаем на дозаполнение профиля.
-        if (needsOnboarding(normalized)) {
-          setPendingUser(normalized);
-          return;
-        }
-        setUser(normalized);
-        setIsLoggedIn(true);
+        applyUser(normalizeUser(me));
       } catch (e) {
         // Стираем сессию только когда сервер сам отверг токен (401/403) —
         // это и правда «не залогинен». Обрыв сети, таймаут или 5xx на самом
@@ -129,7 +147,12 @@ export function AuthProvider({ children }) {
         // человека в гостя, хотя аккаунт был зарегистрирован. Не трогаем
         // хранилище и в случае, если пока шёл запрос, вошёл другой аккаунт.
         const isAuthRejected = e?.status === 401 || e?.status === 403;
-        if (isAuthRejected && !cancelled && epoch === sessionEpoch.current) await clearSession();
+        if (isAuthRejected && !cancelled && epoch === sessionEpoch.current) {
+          await clearSession();
+          setIsLoggedIn(false);
+          setUser(null);
+          setPendingUser(null);
+        }
       } finally {
         clearTimeout(timer);
         if (!cancelled) setBootstrapping(false);
@@ -140,6 +163,12 @@ export function AuthProvider({ children }) {
       clearTimeout(timer);
     };
   }, []);
+
+  // Запоминаем профиль вошедшего для следующего холодного старта. При выходе
+  // кэш стирается вместе с токенами (clearSession).
+  useEffect(() => {
+    if (isLoggedIn && user) setCachedUser(user);
+  }, [isLoggedIn, user]);
 
   const registerPhone = useCallback(async (phone) => {
     await authApi.registerPhone(phone);
@@ -188,7 +217,7 @@ export function AuthProvider({ children }) {
   // profilePicUrl — уже загруженная картинка (см. api/media.uploadImage). Бэкенд
   // не принимает фото при регистрации продавца, поэтому ставим его отдельными
   // PATCH /me и PATCH /me/shop сразу после получения токенов. Сбой тут не
-  // должен ломать регистрацию: аккаунт уже создан, фото можно поменять позже.
+  // должен ломать регистрацию: аккаунт уже создан, имя и фото можно поменять позже.
   const sellerComplete = useCallback(async ({
     inviteToken, code, shopName, description, displayName, profilePicUrl,
   }) => {
@@ -201,12 +230,27 @@ export function AuthProvider({ children }) {
       refreshToken: session.refresh_token,
     });
     let me = session.user;
+    // Телефон к этому моменту уже зарегистрирован покупателем (его создал
+    // /auth/verify с именем «Пользователь»), а бэкенд при повышении покупателя
+    // до продавца display_name игнорирует — по спеке он только для нового
+    // аккаунта. Поэтому введённое имя дописываем отдельным PATCH /me.
+    const name = displayName?.trim();
+    const patch = {
+      ...(name && me?.display_name !== name ? { display_name: name } : {}),
+      ...(profilePicUrl ? { profile_pic_url: profilePicUrl } : {}),
+    };
+    if (Object.keys(patch).length > 0) {
+      try {
+        me = await meApi.updateMe(patch);
+      } catch (e) {
+        console.warn('sellerComplete: не удалось сохранить имя/фото профиля', e);
+      }
+    }
     if (profilePicUrl) {
       try {
-        me = await meApi.updateMe({ profile_pic_url: profilePicUrl });
         await updateMyShop({ profile_pic_url: profilePicUrl });
       } catch (e) {
-        console.warn('sellerComplete: не удалось сохранить фото профиля/магазина', e);
+        console.warn('sellerComplete: не удалось сохранить фото магазина', e);
       }
     }
     setUser(normalizeUser(me));
