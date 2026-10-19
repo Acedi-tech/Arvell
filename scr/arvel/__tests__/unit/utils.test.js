@@ -23,6 +23,10 @@ describe('utils/price', () => {
     expect(norm(formatAmount(12.5))).toBe('12,50');
     expect(formatAmount(null)).toBe('—');
     expect(formatAmount('abc')).toBe('—');
+    // Формат собирается без Intl (он медленный на Android Hermes) — ru-RU вручную.
+    expect(formatAmount(1234567.5)).toBe('1\u00A0234\u00A0567,50');
+    expect(formatAmount(999)).toBe('999');
+    expect(formatAmount(0.05)).toBe('0,05');
   });
 
   it('formatPrice: минорные единицы -> основные, центы не теряются', () => {

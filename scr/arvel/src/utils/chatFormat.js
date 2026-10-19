@@ -7,6 +7,10 @@ export function isImageBody(body) {
   return typeof body === 'string' && IMAGE_RE.test(body.trim());
 }
 
+// Без toLocaleTimeString/toLocaleDateString: на Android Hermes это вызов
+// Java ICU через JNI на каждую строку списка (см. utils/price.js).
+const pad2 = (n) => String(n).padStart(2, '0');
+
 // «сейчас» в первую минуту, затем время, для прошлых дней — «Вчера» и дата.
 export function formatTime(value) {
   if (!value) return '';
@@ -15,10 +19,10 @@ export function formatTime(value) {
   const now = new Date();
   if (now - d < 60 * 1000) return 'сейчас';
   if (d.toDateString() === now.toDateString()) {
-    return d.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
+    return `${pad2(d.getHours())}:${pad2(d.getMinutes())}`;
   }
   const yesterday = new Date(now);
   yesterday.setDate(now.getDate() - 1);
   if (d.toDateString() === yesterday.toDateString()) return 'Вчера';
-  return d.toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit' });
+  return `${pad2(d.getDate())}.${pad2(d.getMonth() + 1)}`;
 }

@@ -7,16 +7,26 @@ export function currencySymbol(code) {
   return SYMBOLS[code] ?? code;
 }
 
-// Сумма в основных денежных единицах -> строка с разделителями разрядов.
-// Дробную часть показываем, только если она есть.
+// Сумма в основных денежных единицах -> строка с разделителями разрядов
+// («1 200», «12,50»). Дробную часть показываем, только если она есть.
+//
+// Собираем строку вручную, а не через toLocaleString('ru-RU'): на Android
+// Hermes каждый такой вызов уходит через JNI в Java ICU и стоит миллисекунды.
+// Цена форматируется в каждой карточке ленты при каждой перерисовке, а их
+// после старта много (кэш, свежая лента, /me, избранное, конфиг) — JS-поток
+// был занят секундами, и нажатия на вкладки и кнопки висели в очереди.
+const GROUP_SEP = '\u00A0'; // ru-RU делит разряды неразрывным пробелом
+
 export function formatAmount(amount) {
   if (amount == null || Number.isNaN(Number(amount))) return '—';
   const n = Number(amount);
-  const hasFraction = !Number.isInteger(n);
-  return n.toLocaleString('ru-RU', {
-    minimumFractionDigits: hasFraction ? 2 : 0,
-    maximumFractionDigits: 2,
-  });
+  const sign = n < 0 ? '-' : '';
+  const cents = Math.round(Math.abs(n) * 100);
+  const whole = String(Math.floor(cents / 100)).replace(/\B(?=(\d{3})+(?!\d))/g, GROUP_SEP);
+  const fraction = cents % 100;
+  return Number.isInteger(n)
+    ? `${sign}${whole}`
+    : `${sign}${whole},${String(fraction).padStart(2, '0')}`;
 }
 
 // price_minor приходит с бэкенда в минорных единицах валюты (копейки/центы),

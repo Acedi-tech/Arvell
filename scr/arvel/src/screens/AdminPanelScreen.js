@@ -23,7 +23,10 @@ const ROLE_LABEL = { user: 'Покупатель', seller: 'Продавец' };
 
 function formatDate(iso) {
   if (!iso) return '';
-  return new Date(iso).toLocaleDateString('ru-RU');
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return '';
+  const pad2 = (n) => String(n).padStart(2, '0');
+  return `${pad2(d.getDate())}.${pad2(d.getMonth() + 1)}.${d.getFullYear()}`;
 }
 
 // created_by/used_by с бэкенда — id пользователя, не имя (в API нет

@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import * as authApi from '../api/auth';
 import * as meApi from '../api/me';
 import { updateMyShop } from '../api/shops';
@@ -292,12 +292,19 @@ export function AuthProvider({ children }) {
     await clearSession();
   }, []);
 
-  const value = {
+  // Без useMemo каждая перерисовка провайдера давала новый объект и заново
+  // рисовала всех, кто читает useAuth, — в том числе каждую карточку ленты.
+  const value = useMemo(() => ({
     isLoggedIn, bootstrapping, user, pendingPhone, pendingUser,
     registerPhone, verifyCode, completeOnboarding,
     sellerAcceptInvite, sellerComplete,
     updateProfile, signOut, deleteAccount,
-  };
+  }), [
+    isLoggedIn, bootstrapping, user, pendingPhone, pendingUser,
+    registerPhone, verifyCode, completeOnboarding,
+    sellerAcceptInvite, sellerComplete,
+    updateProfile, signOut, deleteAccount,
+  ]);
 
   return (
     <AuthContext.Provider value={value}>
