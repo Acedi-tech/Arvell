@@ -107,12 +107,16 @@ export default function SearchScreen({ navigation }) {
       <View style={styles.searchBar}>
         <View style={styles.searchInputWrap}>
           <SearchIcon size={20} color={colors.textMuted} />
+          {/* Экран открывается тапом по строке поиска в «Каталоге» — курсор и
+              клавиатура должны быть сразу здесь, а не после второго тапа. */}
           <TextInput
             style={styles.input}
             placeholder="Поиск брендов..."
             placeholderTextColor={colors.textMuted}
             value={query}
             onChangeText={setQuery}
+            autoFocus
+            returnKeyType="search"
           />
           {/* Раньше единственный способ стереть введённый текст — «Отмена»
               справа от поля; крестик внутри поля стирает сразу, без бэкспейса
@@ -218,7 +222,8 @@ export default function SearchScreen({ navigation }) {
                   )}
                 </View>
                 <Text style={styles.forYouBrand} numberOfLines={1}>
-                  {typeof p.brand === 'string' ? p.brand : p.brand?.name || ''}
+                  {/* Товар «Без бренда» иначе показывал пустую строку над ценой. */}
+                  {(typeof p.brand === 'string' ? p.brand : p.brand?.name) || p.title}
                 </Text>
                 <Text style={styles.forYouPrice}>
                   {p.price_minor != null ? money.formatMinor(p.price_minor) : (p.price != null ? money.formatMajor(p.price) : '—')}

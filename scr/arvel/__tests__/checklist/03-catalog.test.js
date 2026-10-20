@@ -259,6 +259,8 @@ forEachRole(({ t }) => {
         // Только один запрос — по последнему значению.
         expect(listProducts).toHaveBeenCalledTimes(1);
         expect(listProducts).toHaveBeenCalledWith({ q: 'Nik' });
+        // Открывается тапом по строке поиска — поле сразу в фокусе.
+        expect(input().props.autoFocus).toBe(true);
         jest.useRealTimers();
         expect(await screen.findByText('Air Max 90')).toBeTruthy();
       });
@@ -352,6 +354,12 @@ forEachRole(({ t }) => {
         expect(screen.getByText('Для вас')).toBeTruthy();
         fireEvent.press(screen.getByText('9 900,50 €'));
         expect(navigation.navigate).toHaveBeenCalledWith('Product', { id: 'fy1' });
+      });
+
+      it('Search: карточка «Для вас» без бренда показывает название', () => {
+        setProducts({ products: [{ ...adidas, id: 'fy2', brand: null, title: 'Кроссовки без бренда' }] });
+        render(<SearchScreen navigation={navigation} />);
+        expect(screen.getByText('Кроссовки без бренда')).toBeTruthy();
       });
 
       it('Search: карточка результата -> Product', async () => {
