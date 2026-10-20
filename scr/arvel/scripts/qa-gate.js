@@ -140,7 +140,7 @@ function compose(unit, phone) {
   const phone = skipE2e ? {} : e2e();
   // Телефон не на связи — это сбой стенда, а не вердикт по сборке: в группу
   // ничего не шлём, код 2 — watch-builds.sh попробует эту сборку снова.
-  if (phone.error && /отключился|не готов|нет APK/.test(phone.error)) {
+  if (phone.error && /отключился|не готов|нет APK|заблокирован|не записал отчёт/.test(phone.error)) {
     console.error(`\nПриёмка не проведена: ${phone.error}`);
     process.exit(2);
   }

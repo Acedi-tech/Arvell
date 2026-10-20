@@ -56,9 +56,16 @@ for _ in 1 2 3; do
 done
 [ -n "$version" ] || fail "на телефоне нет $APP_ID"
 
-# Экран не должен гаснуть посреди прогона.
-adb shell svc power stayon usb >/dev/null 2>&1
+# Экран не должен гаснуть ни посреди прогона, ни между ними: на погашенном
+# заблокированном экране окно MIUI «Установка через USB» не нажать, и драйвер
+# Maestro не встаёт (21.10). stayon true — при любой зарядке (телефон по кабелю
+# числится «AC powered», и stayon usb не срабатывал).
+adb shell svc power stayon true >/dev/null 2>&1
 adb shell input keyevent KEYCODE_WAKEUP
+sleep 1
+if adb shell dumpsys window | grep -q 'isKeyguardShowing=true'; then
+  fail "экран телефона заблокирован — разблокируйте его один раз, дальше он не будет гаснуть, пока заряжается"
+fi
 
 echo "Сборка на телефоне от $version, сценарии: $ROOT/flows"
 # Драйвер Maestro ставится в начале прогона — подтверждаем, пока не встанет.
