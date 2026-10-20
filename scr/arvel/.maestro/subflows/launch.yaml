@@ -1,0 +1,10 @@
+# Холодный старт приложения. launchApp на MIUI не годится: драйвер Maestro
+# запускает приложение из фона, MIUI это молча блокирует (на экране остаётся
+# рабочий стол, а шаг «COMPLETED»). openLink уходит через adb shell — работает.
+appId: com.arvell.app
+---
+- stopApp
+- openLink: "arvell://"
+- extendedWaitUntil:
+    visible: "Главная"
+    timeout: 20000

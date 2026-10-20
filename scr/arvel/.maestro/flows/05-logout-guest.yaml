@@ -1,0 +1,30 @@
+appId: com.arvell.app
+name: 05-logout-guest
+---
+- runFlow: ../subflows/launch.yaml
+- tapOn: "Профиль"
+- runFlow:
+    when:
+      visible: "Редактировать профиль"
+    commands:
+      - tapOn: "Выйти"
+      - extendedWaitUntil:
+          visible: "Выйти из аккаунта?"
+          timeout: 5000
+      # Кнопка диалога — под его текстом; строка меню «Выйти» выше.
+      - tapOn:
+          text: "Выйти"
+          below: "Вы вернётесь на экран входа."
+      - extendedWaitUntil:
+          notVisible: "Выйти из аккаунта?"
+          timeout: 5000
+# Гость: лента открыта, «Профиль» ведёт в окно входа.
+- tapOn: "Главная"
+- extendedWaitUntil:
+    visible: ".+₽"
+    timeout: 20000
+- tapOn: "Профиль"
+- extendedWaitUntil:
+    visible: "Войти"
+    timeout: 5000
+- takeScreenshot: 05-guest-welcome

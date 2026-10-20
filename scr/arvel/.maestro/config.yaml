@@ -1,0 +1,14 @@
+# Прогон на реальном Android: .maestro/tools/run.sh
+# Сценарии идут по порядку: залогиненные проверки → выход → гость → вход
+# покупателем. Сервер щадим: за прогон один запрос кода и один вход.
+flows:
+  - flows/*
+executionOrder:
+  continueOnFailure: true
+  flowsOrder:
+    - 01-first-tap
+    - 02-feed-product
+    - 03-tabs
+    - 04-seller-menu
+    - 05-logout-guest
+    - 06-login-wrong-code

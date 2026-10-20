@@ -1,0 +1,23 @@
+# Только под продавцом; под покупателем сценарий пропускает проверки.
+appId: com.arvell.app
+name: 04-seller-menu
+tags: [seller]
+---
+- runFlow: ../subflows/launch.yaml
+- tapOn: "Профиль"
+- extendedWaitUntil:
+    visible: "Редактировать профиль"
+    timeout: 10000
+- runFlow:
+    when:
+      visible: "Мои объявления"
+    commands:
+      - assertVisible: "Продавец"
+      - assertVisible: "Продажи"
+      - tapOn: "Мои объявления"
+      - extendedWaitUntil:
+          notVisible: "Редактировать профиль"
+          timeout: 10000
+      - takeScreenshot: 04-my-listings
+      - tapOn: "Назад"
+      - assertVisible: "Редактировать профиль"

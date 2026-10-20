@@ -1,0 +1,14 @@
+# Регрессия QA 15.10–19.10: первый тап после холодного старта терялся,
+# профиль открывался только со второго тапа через 6–9 с.
+appId: com.arvell.app
+name: 01-first-tap
+tags: [logged-in]
+---
+- runFlow: ../subflows/launch.yaml
+- tapOn:
+    text: "Профиль"
+    retryTapIfNoChange: false
+- extendedWaitUntil:
+    visible: "Редактировать профиль"
+    timeout: 3000
+- takeScreenshot: 01-first-tap

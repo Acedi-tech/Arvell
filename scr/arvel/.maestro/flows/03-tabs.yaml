@@ -1,0 +1,22 @@
+appId: com.arvell.app
+name: 03-tabs
+tags: [logged-in]
+---
+- runFlow: ../subflows/launch.yaml
+- tapOn: "Каталог"
+- extendedWaitUntil:
+    visible: "Категории"
+    timeout: 10000
+- tapOn: "Избранное"
+- assertVisible:
+    text: "Избранное"
+- tapOn: "Чат"
+- extendedWaitUntil:
+    visible: "Чаты"
+    timeout: 10000
+- tapOn: "Профиль"
+- extendedWaitUntil:
+    visible: "Редактировать профиль"
+    timeout: 10000
+- tapOn: "Главная"
+- assertVisible: "ARVELL"

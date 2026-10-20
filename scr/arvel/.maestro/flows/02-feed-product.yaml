@@ -1,0 +1,21 @@
+appId: com.arvell.app
+name: 02-feed-product
+---
+- runFlow: ../subflows/launch.yaml
+- tapOn: "Главная"
+- extendedWaitUntil:
+    visible: ".+₽"
+    timeout: 20000
+# Карточка ленты: content-desc «Бренд, Название, 1 990 ₽» (между разрядами
+# неразрывный пробел, поэтому без [0-9 ]).
+- tapOn:
+    text: ".+, .+₽"
+    index: 0
+- extendedWaitUntil:
+    visible: "Описание"
+    timeout: 10000
+- assertVisible: "Купить"
+- assertVisible: "Написать продавцу"
+- takeScreenshot: 02-product
+- tapOn: "Назад"
+- assertVisible: "ARVELL"
