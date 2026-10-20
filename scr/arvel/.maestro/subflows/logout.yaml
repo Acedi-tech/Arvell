@@ -1,0 +1,24 @@
+# Выйти, если вошли; оставить приложение на ленте гостем.
+appId: com.arvell.app
+---
+- runFlow: launch.yaml
+- tapOn: "Профиль"
+- runFlow:
+    when:
+      visible: "Редактировать профиль"
+    commands:
+      - tapOn: "Выйти"
+      - extendedWaitUntil:
+          visible: "Выйти из аккаунта?"
+          timeout: 5000
+      - tapOn:
+          text: "Выйти"
+          below: "Вы вернётесь на экран входа."
+      - extendedWaitUntil:
+          notVisible: "Выйти из аккаунта?"
+          timeout: 5000
+- runFlow:
+    when:
+      visible: "Войти"
+    commands:
+      - back

@@ -1,0 +1,61 @@
+# Регистрация нового продавца по инвайту. Тратит инвайт и номер, поэтому не
+# в общем прогоне: запускается вручную с параметрами.
+#   maestro test -e PHONE=9990020001 -e INVITE=<код> flows-manual/07-register-seller.yaml
+# Регрессия QA 19.10: шаг SMS-кода продавца выглядел как второй экран
+# «Расскажите о себе» — теперь у него заголовок «Подтвердите номер».
+appId: com.arvell.app
+name: 07-register-seller
+tags: [manual, invite]
+---
+- runFlow: ../subflows/logout.yaml
+- tapOn: "Профиль"
+- tapOn: "Войти"
+- extendedWaitUntil:
+    visible: "Получить код"
+    timeout: 5000
+- tapOn:
+    text: "\\+7.*"
+- inputText: ${PHONE}
+- hideKeyboard
+- tapOn: "Получить код"
+- extendedWaitUntil:
+    visible: "Введите код"
+    timeout: 40000
+- inputText: "1234"
+# Новый номер → анкета. Если номер уже занят, сценарий упадёт здесь.
+- extendedWaitUntil:
+    visible: "Расскажите о себе"
+    timeout: 30000
+- takeScreenshot: 07-1-form
+- tapOn: "Введите имя"
+- inputText: "ТЕСТ QA Продавец"
+- hideKeyboard
+- tapOn: "Я продавец"
+- tapOn: "Код приглашения от продавца"
+- inputText: ${INVITE}
+- hideKeyboard
+- tapOn: "Например, Alex Sneaker Shop"
+- inputText: "ТЕСТ QA магазин"
+- hideKeyboard
+- tapOn: "Отправить код продавцу"
+- extendedWaitUntil:
+    visible: "Подтвердите номер"
+    timeout: 40000
+- assertNotVisible: "Расскажите о себе"
+- assertNotVisible: "Введите имя"
+- takeScreenshot: 07-2-seller-code
+- tapOn: "0000"
+- inputText: "1234"
+- hideKeyboard
+- tapOn: "Подтвердить код"
+- extendedWaitUntil:
+    visible: "Главная"
+    timeout: 40000
+# Повторной анкеты после подтверждения тоже быть не должно.
+- assertNotVisible: "Расскажите о себе"
+- tapOn: "Профиль"
+- extendedWaitUntil:
+    visible: "Продавец"
+    timeout: 15000
+- assertVisible: "ТЕСТ QA Продавец"
+- takeScreenshot: 07-3-seller-profile
