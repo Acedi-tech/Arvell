@@ -18,6 +18,12 @@ name: 05-logout-guest
       - extendedWaitUntil:
           notVisible: "Выйти из аккаунта?"
           timeout: 5000
+# Гостю «Профиль» уже открыл окно входа — закрываем его.
+- runFlow:
+    when:
+      visible: "Войти"
+    commands:
+      - back
 # Гость: лента открыта, «Профиль» ведёт в окно входа.
 - tapOn: "Главная"
 - extendedWaitUntil:

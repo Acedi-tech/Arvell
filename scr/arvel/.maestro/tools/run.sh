@@ -48,8 +48,8 @@ echo "Сборка на телефоне от $version, сценарии: $ROOT/
   --test-output-dir "$OUT" 2>&1 | tee "$OUT/maestro.log"
 code=${PIPESTATUS[0]}
 
-total=$(grep -c '<testcase' "$OUT/report.xml" 2>/dev/null || echo 0)
-failed=$(grep -c '<failure' "$OUT/report.xml" 2>/dev/null || echo 0)
+total=$(grep -c '<testcase' "$OUT/report.xml" 2>/dev/null); total=${total:-0}
+failed=$(grep -c '<failure' "$OUT/report.xml" 2>/dev/null); failed=${failed:-0}
 {
   echo "Сборка от $version · сценариев: $total · прошло: $((total - failed)) · упало: $failed"
   grep -oE '<testcase [^>]*name="[^"]+"|<failure[^>]*message="[^"]*"' "$OUT/report.xml" 2>/dev/null \
