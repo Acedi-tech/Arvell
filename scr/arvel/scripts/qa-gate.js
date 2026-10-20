@@ -138,6 +138,12 @@ function compose(unit, phone) {
 (async () => {
   const unit = unitTests();
   const phone = skipE2e ? {} : e2e();
+  // Телефон не на связи — это сбой стенда, а не вердикт по сборке: в группу
+  // ничего не шлём, код 2 — watch-builds.sh попробует эту сборку снова.
+  if (phone.error && /отключился|не готов|нет APK/.test(phone.error)) {
+    console.error(`\nПриёмка не проведена: ${phone.error}`);
+    process.exit(2);
+  }
   const { recommend, html } = compose(unit, phone);
 
   console.log(`\n\n===== Отчёт =====\n${html.replace(/<\/?b>/g, '')}\n`);

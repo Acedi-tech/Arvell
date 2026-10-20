@@ -1,0 +1,10 @@
+[Unit]
+Description=ARVELL: раз в 15 минут проверять новые сборки EAS
+
+[Timer]
+OnBootSec=5min
+OnUnitActiveSec=15min
+Persistent=true
+
+[Install]
+WantedBy=timers.target

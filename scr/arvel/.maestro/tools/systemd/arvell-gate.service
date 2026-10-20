@@ -1,0 +1,13 @@
+# Автоприёмка сборок ARVELL на телефоне QA (см. .maestro/tools/watch-builds.sh).
+# Установка: cp arvell-gate.* ~/.config/systemd/user/ &&
+#   systemctl --user daemon-reload && systemctl --user enable --now arvell-gate.timer
+[Unit]
+Description=ARVELL: приёмка новой сборки EAS на телефоне
+
+[Service]
+Type=oneshot
+Environment=PATH=/home/acedi/.nvm/versions/node/v22.23.1/bin:%h/.maestro/bin:/usr/local/bin:/usr/bin:/bin
+Environment=DEVICE=192.168.31.114:5555
+# Ноут не должен уснуть посреди прогона.
+ExecStart=/usr/bin/systemd-inhibit --what=idle:sleep --why="ARVELL QA gate" %h/Arvel-main/scr/arvel/.maestro/tools/watch-builds.sh
+TimeoutStartSec=90min
