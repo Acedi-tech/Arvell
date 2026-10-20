@@ -12,7 +12,8 @@
     "test:coverage": "jest --coverage",
     "checklist": "node scripts/checklist-report.js",
     "checklist:tg": "node scripts/checklist-report.js --telegram",
-    "telegram:chatid": "node scripts/telegram.js"
+    "telegram:chatid": "node scripts/telegram.js",
+    "qa:gate": "node scripts/qa-gate.js"
   },
   "dependencies": {
     "@expo/metro-runtime": "~6.1.2",
