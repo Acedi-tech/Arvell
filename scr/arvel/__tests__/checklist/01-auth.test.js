@@ -453,6 +453,11 @@ describe('РЕГИСТРАЦИЯ И ВХОД', () => {
       fireEvent.press(screen.getByText('Отправить код продавцу'));
       await waitFor(() => expect(auth.sellerAcceptInvite).toHaveBeenCalledWith('INV-123', '+79990001122'));
       expect(await screen.findByText('Код из SMS')).toBeTruthy();
+      // Шаг кода — не повтор анкеты: ни заголовка «Расскажите о себе», ни полей.
+      expect(screen.getByText('Подтвердите номер')).toBeTruthy();
+      expect(screen.queryByText('Расскажите о себе')).toBeNull();
+      expect(screen.queryByLabelText('Выбрать фото профиля')).toBeNull();
+      expect(screen.queryByPlaceholderText('Введите имя')).toBeNull();
     });
 
     it('Неверный код приглашения -> ошибка', async () => {

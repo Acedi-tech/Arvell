@@ -14,6 +14,7 @@ import { useAuth } from '../context/AuthContext';
 import { useAppConfig } from '../context/AppConfigContext';
 import { uploadImage } from '../api/media';
 import { toUploadAsset, prepareForUpload } from '../utils/imageUpload';
+import { otpErrorMessage } from '../utils/otpError';
 
 // Сумка для роли «Я покупатель» — как на макете
 function BagIcon({ size = 22, color = colors.accentText }) {
@@ -167,7 +168,7 @@ export default function ProfileSetupScreen({ navigation }) {
       });
       finishedRef.current = true;
     } catch (e) {
-      setFormError(e.message || 'Неверный код. Попробуйте ещё раз.');
+      setFormError(otpErrorMessage(e));
       setSellerCode('');
     } finally {
       setSubmitting(false);
@@ -209,26 +210,38 @@ export default function ProfileSetupScreen({ navigation }) {
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
       >
-        <Text style={styles.title}>Расскажите о себе</Text>
-        <Text style={styles.sub}>Как вас будут видеть другие пользователи</Text>
+        {/* Шаг кода продавца — отдельный экран по смыслу: под заголовком
+            «Расскажите о себе» и с аватаром он выглядел как повторная анкета,
+            будто данные нужно вводить второй раз (QA 19.10). */}
+        {sellerOtpStep ? (
+          <>
+            <Text style={styles.title}>Подтвердите номер</Text>
+            <Text style={styles.sub}>Последний шаг регистрации продавца</Text>
+          </>
+        ) : (
+          <>
+            <Text style={styles.title}>Расскажите о себе</Text>
+            <Text style={styles.sub}>Как вас будут видеть другие пользователи</Text>
 
-        {/* Аватар по центру с жёлтым бейджем камеры */}
-        <Pressable style={styles.avatarWrap} accessibilityLabel="Выбрать фото профиля" onPress={onAvatarPress}>
-          {avatar ? (
-            <Image source={{ uri: avatar.uri }} style={styles.avatarImage} />
-          ) : (
-            <View style={styles.avatar}>
-              <UserIcon size={44} color={colors.textMuted} />
-            </View>
-          )}
-          <View style={styles.camBtn}>
-            <CameraIcon size={14} />
-          </View>
-        </Pressable>
+            {/* Аватар по центру с жёлтым бейджем камеры */}
+            <Pressable style={styles.avatarWrap} accessibilityLabel="Выбрать фото профиля" onPress={onAvatarPress}>
+              {avatar ? (
+                <Image source={{ uri: avatar.uri }} style={styles.avatarImage} />
+              ) : (
+                <View style={styles.avatar}>
+                  <UserIcon size={44} color={colors.textMuted} />
+                </View>
+              )}
+              <View style={styles.camBtn}>
+                <CameraIcon size={14} />
+              </View>
+            </Pressable>
+          </>
+        )}
 
         {sellerOtpStep ? (
           <>
-            <Text style={styles.label}>Код из SMS</Text>
+            <Text style={[styles.label, { marginTop: spacing.xl }]}>Код из SMS</Text>
             <Text style={styles.note}>
               Отправили код на {pendingPhone} для подтверждения продавца.
             </Text>

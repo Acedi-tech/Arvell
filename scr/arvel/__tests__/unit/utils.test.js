@@ -5,6 +5,7 @@ import { isImageBody, formatTime } from '../../src/utils/chatFormat';
 import { guessContentType, toUploadAsset, prepareForUpload } from '../../src/utils/imageUpload';
 import { API_BASE_URL } from '../../src/api/client';
 import { sizeSystemsForCategory } from '../../src/utils/sizes';
+import { otpErrorMessage } from '../../src/utils/otpError';
 import { ImageManipulator } from 'expo-image-manipulator';
 
 // ru-RU разделяет разряды неразрывным пробелом — нормализуем для сравнения.
@@ -179,5 +180,19 @@ describe('utils/sizes — системы размеров по категори�
   it('незнакомая или не выбранная категория — все системы', () => {
     expect(sizeSystemsForCategory(systems, ['Ремни', 'Аксессуары'])).toBe(systems);
     expect(sizeSystemsForCategory(systems, [])).toBe(systems);
+  });
+});
+
+describe('utils/otpError', () => {
+  it('код отклонён сервером — русский текст вместо detail бэкенда', () => {
+    for (const status of [400, 401, 422]) {
+      expect(otpErrorMessage({ status, message: 'invalid verification code' })).toBe('Неверный код. Попробуйте ещё раз.');
+    }
+  });
+
+  it('429 — просьба подождать, сетевые ошибки — как есть', () => {
+    expect(otpErrorMessage({ status: 429, message: 'too many requests' })).toMatch(/Слишком много попыток/);
+    expect(otpErrorMessage({ status: 0, message: 'Нет связи с сервером, проверьте интернет' })).toBe('Нет связи с сервером, проверьте интернет');
+    expect(otpErrorMessage(new Error('Неверный код'))).toBe('Неверный код');
   });
 });

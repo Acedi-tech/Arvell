@@ -17,8 +17,8 @@ const fs = require('fs');
 const path = require('path');
 const { spawnSync } = require('child_process');
 
-const SHEET_ID = '15F_yiEpWzs76yPPz1awGo3OUmagQX9zAaCdLC0wp_xg';
-const SHEET_GID = '404673571';
+const SHEET_ID = '1NtoNWvDOidmfzEtprMANt0eCzF5hSprTPVXkul4V698';
+const SHEET_GID = '981656472';
 const ROOT = path.resolve(__dirname, '..');
 const CACHE = path.join(__dirname, 'checklist.csv');
 const REPORT = path.join(ROOT, 'checklist-report.csv');

@@ -5,6 +5,7 @@ import { colors, spacing, radius, font } from '../theme';
 import { BackIcon } from '../components/Icons';
 import KeyboardAware from '../components/KeyboardAware';
 import { useAuth } from '../context/AuthContext';
+import { otpErrorMessage } from '../utils/otpError';
 
 const LEN = 4;
 const RESEND_SECONDS = 30;
@@ -68,7 +69,7 @@ export default function VerifyScreen({ navigation, route }) {
           if (needsOnboarding) navigation.navigate('ProfileSetup');
         })
         .catch((e) => {
-          setError(e.message || 'Неверный код. Попробуйте ещё раз.');
+          setError(otpErrorMessage(e));
           setValue('');
           setVerifying(false);
         });
