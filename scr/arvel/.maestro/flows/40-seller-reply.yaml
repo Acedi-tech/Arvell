@@ -1,0 +1,27 @@
+# Продавец QA видит переписку покупателя и отвечает.
+appId: com.arvell.app
+name: 40-seller-reply
+tags: [server, seller]
+---
+- runFlow:
+    file: ../subflows/login.yaml
+    env:
+      PHONE: ${SELLER_PHONE}
+- tapOn: "Чат"
+- extendedWaitUntil:
+    visible: "Чаты"
+    timeout: 10000
+- tapOn:
+    text: ".*QA покупатель.*"
+    index: 0
+- extendedWaitUntil:
+    visible: "ТЕСТ QA: здравствуйте, товар в наличии?"
+    timeout: 20000
+- tapOn: "Сообщение.*"
+- inputText: "ТЕСТ QA: да, в наличии"
+- tapOn: "Отправить"
+- extendedWaitUntil:
+    visible: "ТЕСТ QA: да, в наличии"
+    timeout: 20000
+- takeScreenshot: 40-seller-chat
+- tapOn: "Назад"

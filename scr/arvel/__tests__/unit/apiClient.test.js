@@ -73,6 +73,12 @@ describe('request', () => {
     expect(err).toMatchObject({ status: 422, code: 'VALIDATION', message: 'Название слишком длинное', fields: [{ field: 'title' }] });
   });
 
+  it('429 -> русский текст вместо «too many requests» бэкенда', async () => {
+    fetch.mockResolvedValueOnce(json(429, { code: 'rate_limited', title: 'Too Many Requests', detail: 'too many requests' }));
+    const err = await client.request('/auth/register', { method: 'POST', body: {} }).catch((e) => e);
+    expect(err).toMatchObject({ status: 429, message: 'Слишком много попыток. Подождите немного и попробуйте снова.' });
+  });
+
   it('не-JSON тело ошибки не ломает разбор', async () => {
     fetch.mockResolvedValueOnce(json(404, undefined));
     const err = await client.request('/nope').catch((e) => e);

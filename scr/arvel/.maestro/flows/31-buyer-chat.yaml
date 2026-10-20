@@ -1,0 +1,46 @@
+# Покупатель: «Написать продавцу» → сообщение → фото в чат; «Купить» → тот же чат.
+appId: com.arvell.app
+name: 31-buyer-chat
+tags: [server, buyer]
+---
+- runFlow: ../subflows/launch.yaml
+- runFlow: ../subflows/open-test-product.yaml
+- tapOn: "Написать продавцу"
+- extendedWaitUntil:
+    visible: "Отправить"
+    timeout: 20000
+- tapOn: "Сообщение.*"
+- inputText: "ТЕСТ QA: здравствуйте, товар в наличии?"
+- tapOn: "Отправить"
+- extendedWaitUntil:
+    visible: "ТЕСТ QA: здравствуйте, товар в наличии?"
+    timeout: 20000
+# Фото в чат.
+- tapOn: "Прикрепить фото"
+- extendedWaitUntil:
+    visible: "Фото"
+    timeout: 10000
+- tapOn:
+    text: "Фото, дата и время съемки.*"
+    index: 0
+- runFlow:
+    when:
+      visible: "Готово"
+    commands:
+      - tapOn: "Готово"
+- runFlow:
+    when:
+      visible: "Убрать фото"
+    commands:
+      - tapOn: "Отправить"
+- extendedWaitUntil:
+    visible: "Открыть фото"
+    timeout: 60000
+- takeScreenshot: 31-chat
+- tapOn: "Назад"
+# «Купить» ведёт в переписку с продавцом.
+- tapOn: "Купить"
+- extendedWaitUntil:
+    visible: "ТЕСТ QA: здравствуйте, товар в наличии?"
+    timeout: 20000
+- tapOn: "Назад"

@@ -1,0 +1,24 @@
+# Продавец QA удаляет тестовый товар (уборка после 20–31).
+appId: com.arvell.app
+name: 41-seller-delete
+tags: [server, seller]
+---
+- runFlow: ../subflows/launch.yaml
+- tapOn: "Профиль"
+- tapOn: "Мои объявления"
+- extendedWaitUntil:
+    visible: ".*ТЕСТ QA кроссовки.*"
+    timeout: 20000
+- tapOn:
+    text: "Меню объявления"
+    index: 0
+- tapOn: "Удалить объявление"
+- extendedWaitUntil:
+    visible: "Удалить объявление?"
+    timeout: 5000
+- tapOn:
+    text: "Удалить"
+    below: "Удалить объявление?"
+- extendedWaitUntil:
+    notVisible: ".*ТЕСТ QA кроссовки.*"
+    timeout: 20000

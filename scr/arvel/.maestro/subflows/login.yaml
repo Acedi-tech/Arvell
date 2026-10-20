@@ -1,0 +1,26 @@
+# Войти номером ${PHONE} (без +7) с кодом 1234. Если уже вошли — сначала выйти.
+appId: com.arvell.app
+---
+- runFlow: logout.yaml
+- tapOn: "Профиль"
+- tapOn: "Войти"
+- extendedWaitUntil:
+    visible: "Получить код"
+    timeout: 5000
+- tapOn:
+    text: "\\+7.*"
+- inputText: ${PHONE}
+- hideKeyboard
+- tapOn: "Получить код"
+# Тестовый сервер отвечает на запрос кода до 15–20 с.
+- extendedWaitUntil:
+    visible: "Введите код"
+    timeout: 40000
+- inputText: "1234"
+- extendedWaitUntil:
+    visible: "Главная"
+    timeout: 30000
+- tapOn: "Профиль"
+- extendedWaitUntil:
+    visible: "Редактировать профиль"
+    timeout: 15000

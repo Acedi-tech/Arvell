@@ -1,0 +1,35 @@
+# Покупатель: экраны профиля без изменения данных.
+appId: com.arvell.app
+name: 10-buyer-screens
+tags: [logged-in]
+---
+- runFlow: ../subflows/launch.yaml
+- tapOn: "Профиль"
+- assertVisible: "Покупатель"
+# Редактирование профиля: открыть и выйти без сохранения.
+- tapOn: "Редактировать профиль"
+- extendedWaitUntil:
+    visible: "Никнейм"
+    timeout: 10000
+- assertVisible: "Телефон"
+- tapOn: "Назад"
+- assertVisible: "Редактировать профиль"
+# Помощь и правила.
+- tapOn: "Помощь"
+- extendedWaitUntil:
+    visible: "Частые вопросы"
+    timeout: 10000
+- tapOn: "Назад"
+- tapOn: "Правила"
+- extendedWaitUntil:
+    notVisible: "Редактировать профиль"
+    timeout: 10000
+- tapOn: "Назад"
+# Заказы.
+- tapOn: "Заказы"
+- extendedWaitUntil:
+    notVisible: "Редактировать профиль"
+    timeout: 15000
+- takeScreenshot: 10-orders
+- tapOn: "Назад"
+- assertVisible: "Редактировать профиль"

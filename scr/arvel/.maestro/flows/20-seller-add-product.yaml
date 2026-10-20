@@ -1,0 +1,72 @@
+# Продавец QA добавляет товар с фото из галереи (картинки «ТЕСТ QA» —
+# .maestro/tools/push-test-photos.sh). Удаляет его 41-seller-delete.
+appId: com.arvell.app
+name: 20-seller-add-product
+tags: [server, seller]
+---
+- runFlow:
+    file: ../subflows/login.yaml
+    env:
+      PHONE: ${SELLER_PHONE}
+- assertVisible: "Продавец"
+- tapOn: "Мои объявления"
+- tapOn: "\\+ Добавить товар"
+- extendedWaitUntil:
+    visible: "Новый товар"
+    timeout: 10000
+- tapOn: "Выберите категорию"
+- tapOn: "Обувь › Кроссовки"
+# Фото: системный выбор Android, «ТЕСТ QA» — самые свежие в галерее.
+- tapOn: "Добавить фото"
+- extendedWaitUntil:
+    visible: "Фото"
+    timeout: 10000
+- tapOn:
+    text: "Фото, дата и время съемки.*"
+    index: 0
+- tapOn: "Готово"
+- extendedWaitUntil:
+    visible: "Фотографии \\(1/.*"
+    timeout: 10000
+- tapOn: "Например, Air Max 90"
+- inputText: "ТЕСТ QA кроссовки"
+- hideKeyboard
+- tapOn: "Выберите цвет"
+- tapOn: "Чёрный"
+- scrollUntilVisible:
+    element: "Выберите систему"
+    centerElement: true
+- tapOn: "Выберите систему"
+- tapOn: "Обувь, EU"
+# Поле размера появляется у нижнего края — под закреплённой «Опубликовать».
+- scrollUntilVisible:
+    element: "Выберите размер"
+    centerElement: true
+- tapOn: "Выберите размер"
+# Список размеров прокручивается внутри формы — берём первый, он виден сразу.
+- tapOn: "16"
+- scrollUntilVisible:
+    element: "8900"
+    centerElement: true
+- tapOn: "8900"
+- inputText: "1234"
+- hideKeyboard
+- scrollUntilVisible:
+    element: "Новое"
+    centerElement: true
+- tapOn: "Новое"
+- scrollUntilVisible:
+    element: "Расскажите о состоянии.*"
+    centerElement: true
+- tapOn: "Расскажите о состоянии.*"
+- inputText: "ТЕСТ QA — автотест, будет удалён"
+- hideKeyboard
+- tapOn: "Опубликовать"
+- extendedWaitUntil:
+    visible: "Товар опубликован"
+    timeout: 60000
+- tapOn: "Отлично"
+- extendedWaitUntil:
+    visible: ".*ТЕСТ QA кроссовки.*"
+    timeout: 20000
+- takeScreenshot: 20-my-listings

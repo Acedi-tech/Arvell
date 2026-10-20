@@ -66,10 +66,14 @@ async function parseError(res) {
     status: res.status,
     code: body?.code,
     title: body?.title,
-    detail: body?.detail,
+    // Лимит запросов бэкенд описывает по-английски («too many requests»), а
+    // экраны показывают e.message как есть — переводим здесь, для всех сразу.
+    detail: res.status === 429 ? TOO_MANY_REQUESTS : body?.detail,
     fields: body?.fields,
   });
 }
+
+export const TOO_MANY_REQUESTS = 'Слишком много попыток. Подождите немного и попробуйте снова.';
 
 // Raw refresh call, deliberately not going through auth.js — auth.js calls
 // request() below, and request() calls this on 401, so importing auth.js

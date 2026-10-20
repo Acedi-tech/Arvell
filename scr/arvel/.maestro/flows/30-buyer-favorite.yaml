@@ -1,0 +1,24 @@
+# Покупатель: товар продавца QA → в избранное → вкладка «Избранное» → убрать.
+appId: com.arvell.app
+name: 30-buyer-favorite
+tags: [server, buyer]
+---
+- runFlow:
+    file: ../subflows/login.yaml
+    env:
+      PHONE: ${BUYER_PHONE}
+- runFlow: ../subflows/open-test-product.yaml
+- assertVisible: "Купить"
+- tapOn: "В избранное"
+- tapOn: "Назад"
+- tapOn: "Избранное"
+- extendedWaitUntil:
+    visible: ".*ТЕСТ QA кроссовки.*"
+    timeout: 15000
+- takeScreenshot: 30-favorites
+- tapOn:
+    text: ".*(В избранном|Убрать из избранного).*"
+    index: 0
+- extendedWaitUntil:
+    notVisible: ".*ТЕСТ QA кроссовки.*"
+    timeout: 15000

@@ -1,0 +1,32 @@
+# Каталог: поиск, затем категория (товары ниже брендов — прокрутка вниз).
+# Прокрутки вверх нет намеренно: повторные свайпы у верха экрана задевали
+# шторку MIUI, и телефон отваливался от USB (20.10, дважды).
+appId: com.arvell.app
+name: 11-catalog-search
+---
+- runFlow: ../subflows/launch.yaml
+- tapOn: "Каталог"
+- extendedWaitUntil:
+    visible: "Категории"
+    timeout: 10000
+- tapOn: "Поиск брендов..."
+- tapOn: "Поиск брендов..."
+- inputText: "Nike"
+- extendedWaitUntil:
+    visible: ".+₽"
+    timeout: 20000
+- takeScreenshot: 11-search
+# «Отмена» очищает запрос (не уходит назад) — снова видно «Популярное».
+- tapOn: "Отмена"
+- assertVisible: "Популярное"
+- hideKeyboard
+- back
+- extendedWaitUntil:
+    visible: "Категории"
+    timeout: 10000
+- tapOn: "Обувь"
+- assertVisible: "Кроссовки"
+- scrollUntilVisible:
+    element: ".+₽"
+    timeout: 20000
+- takeScreenshot: 11-category

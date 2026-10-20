@@ -1,0 +1,17 @@
+# Найти через поиск каталога товар «ТЕСТ QA кроссовки» и открыть его.
+appId: com.arvell.app
+---
+- tapOn: "Каталог"
+- tapOn: "Поиск брендов..."
+# Экран поиска: поле в фокусе само (с 20.10), тап — для старых сборок.
+- tapOn: "Поиск брендов..."
+- inputText: "ТЕСТ QA"
+- extendedWaitUntil:
+    visible: ".*ТЕСТ QA кроссовки.*"
+    timeout: 20000
+- tapOn:
+    text: ".*ТЕСТ QA кроссовки.*"
+    index: 0
+- extendedWaitUntil:
+    visible: "Описание"
+    timeout: 15000
