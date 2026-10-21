@@ -32,6 +32,16 @@ export default function VerifyScreen({ navigation, route }) {
     return () => clearTimeout(t);
   }, []);
 
+  // Вернулись сюда «Назад» с анкеты: код уже использован, а экран оставался в
+  // состоянии проверки — с цифрами в ячейках и заблокированным полем, ни
+  // стереть, ни ввести новый (QA 21.10, Galaxy S9). При каждом возврате
+  // начинаем с чистого поля.
+  useEffect(() => navigation.addListener?.('focus', () => {
+    setValue('');
+    setVerifying(false);
+    setError(null);
+  }), [navigation]);
+
   // Таймер повторной отправки
   useEffect(() => {
     if (seconds <= 0) return;

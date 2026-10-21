@@ -181,6 +181,10 @@ describe('РЕГИСТРАЦИЯ И ВХОД', () => {
       render(<VerifyScreen navigation={navigation} route={route} />);
       fireEvent.changeText(codeInput(), '1111');
       await waitFor(() => expect(navigation.navigate).toHaveBeenCalledWith('ProfileSetup'));
+      // «Назад» с анкеты: экран кода снова чистый и принимает ввод.
+      act(() => navigation.emit('focus'));
+      expect(codeInput().props.value).toBe('');
+      expect(codeInput().props.editable).toBe(true);
     });
 
     it('Верный код, существующий -> вход в приложение', async () => {
