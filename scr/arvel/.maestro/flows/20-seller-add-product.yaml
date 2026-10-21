@@ -30,7 +30,9 @@ tags: [server, seller]
     timeout: 10000
 - tapOn: "Например, Air Max 90"
 - inputText: "ТЕСТ QA кроссовки"
-- hideKeyboard
+# Enter закрывает клавиатуру однострочного поля; hideKeyboard жмёт
+# системный «Назад» и без клавиатуры (уводил с анкеты на S9, 21.10).
+- pressKey: Enter
 - tapOn: "Выберите цвет"
 - tapOn: "Чёрный"
 - scrollUntilVisible:
@@ -50,7 +52,9 @@ tags: [server, seller]
     centerElement: true
 - tapOn: "8900"
 - inputText: "1234"
-- hideKeyboard
+# Enter закрывает клавиатуру однострочного поля; hideKeyboard жмёт
+# системный «Назад» и без клавиатуры (уводил с анкеты на S9, 21.10).
+- pressKey: Enter
 - scrollUntilVisible:
     element: "Новое"
     centerElement: true
@@ -60,7 +64,6 @@ tags: [server, seller]
     centerElement: true
 - tapOn: "Расскажите о состоянии.*"
 - inputText: "ТЕСТ QA — автотест, будет удалён"
-- hideKeyboard
 - tapOn: "Опубликовать"
 - extendedWaitUntil:
     visible: "Товар опубликован"

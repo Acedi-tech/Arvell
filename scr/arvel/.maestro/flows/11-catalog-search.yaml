@@ -19,11 +19,14 @@ name: 11-catalog-search
 # «Отмена» очищает запрос (не уходит назад) — снова видно «Популярное».
 - tapOn: "Отмена"
 - assertVisible: "Популярное"
-- hideKeyboard
-- back
-- extendedWaitUntil:
-    visible: "Категории"
-    timeout: 10000
+# Назад к каталогу: первое нажатие закрывает клавиатуру, если она открыта.
+- repeat:
+    times: 3
+    while:
+      notVisible: "Категории"
+    commands:
+      - back
+- assertVisible: "Категории"
 - tapOn: "Обувь"
 - assertVisible: "Кроссовки"
 - scrollUntilVisible:

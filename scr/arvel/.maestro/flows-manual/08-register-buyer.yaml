@@ -1,0 +1,40 @@
+# Регистрация нового покупателя (новый номер → анкета «Я покупатель»).
+#   maestro test -e PHONE=9990020002 -e NAME="QA покупатель 2" flows-manual/08-register-buyer.yaml
+appId: com.arvell.app
+name: 08-register-buyer
+tags: [manual]
+---
+- runFlow: ../subflows/logout.yaml
+- tapOn: "Профиль"
+- tapOn: "Войти"
+- extendedWaitUntil:
+    visible: "Получить код"
+    timeout: 5000
+- tapOn:
+    text: "\\+7.*"
+- inputText: ${PHONE}
+# Enter закрывает клавиатуру однострочного поля; hideKeyboard жмёт
+# системный «Назад» и без клавиатуры (уводил с анкеты на S9, 21.10).
+- pressKey: Enter
+- tapOn: "Получить код"
+- extendedWaitUntil:
+    visible: "Введите код"
+    timeout: 40000
+- inputText: "1234"
+- extendedWaitUntil:
+    visible: "Расскажите о себе"
+    timeout: 30000
+- tapOn: "Введите имя"
+- inputText: ${NAME}
+# Enter закрывает клавиатуру однострочного поля; hideKeyboard жмёт
+# системный «Назад» и без клавиатуры (уводил с анкеты на S9, 21.10).
+- pressKey: Enter
+- tapOn: "Завершить"
+- extendedWaitUntil:
+    visible: "Главная"
+    timeout: 30000
+- tapOn: "Профиль"
+- extendedWaitUntil:
+    visible: "Покупатель"
+    timeout: 15000
+- assertVisible: ${NAME}

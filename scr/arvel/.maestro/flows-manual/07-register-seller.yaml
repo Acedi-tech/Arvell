@@ -16,7 +16,9 @@ tags: [manual, invite]
 - tapOn:
     text: "\\+7.*"
 - inputText: ${PHONE}
-- hideKeyboard
+# Enter закрывает клавиатуру однострочного поля; hideKeyboard жмёт
+# системный «Назад» и без клавиатуры (уводил с анкеты на S9, 21.10).
+- pressKey: Enter
 - tapOn: "Получить код"
 - extendedWaitUntil:
     visible: "Введите код"
@@ -29,14 +31,20 @@ tags: [manual, invite]
 - takeScreenshot: 07-1-form
 - tapOn: "Введите имя"
 - inputText: "ТЕСТ QA Продавец"
-- hideKeyboard
+# Enter закрывает клавиатуру однострочного поля; hideKeyboard жмёт
+# системный «Назад» и без клавиатуры (уводил с анкеты на S9, 21.10).
+- pressKey: Enter
 - tapOn: "Я продавец"
 - tapOn: "Код приглашения от продавца"
 - inputText: ${INVITE}
-- hideKeyboard
+# Enter закрывает клавиатуру однострочного поля; hideKeyboard жмёт
+# системный «Назад» и без клавиатуры (уводил с анкеты на S9, 21.10).
+- pressKey: Enter
 - tapOn: "Например, Alex Sneaker Shop"
 - inputText: "ТЕСТ QA магазин"
-- hideKeyboard
+# Enter закрывает клавиатуру однострочного поля; hideKeyboard жмёт
+# системный «Назад» и без клавиатуры (уводил с анкеты на S9, 21.10).
+- pressKey: Enter
 - tapOn: "Отправить код продавцу"
 - extendedWaitUntil:
     visible: "Подтвердите номер"
@@ -46,7 +54,9 @@ tags: [manual, invite]
 - takeScreenshot: 07-2-seller-code
 - tapOn: "0000"
 - inputText: "1234"
-- hideKeyboard
+# Enter закрывает клавиатуру однострочного поля; hideKeyboard жмёт
+# системный «Назад» и без клавиатуры (уводил с анкеты на S9, 21.10).
+- pressKey: Enter
 - tapOn: "Подтвердить код"
 - extendedWaitUntil:
     visible: "Главная"

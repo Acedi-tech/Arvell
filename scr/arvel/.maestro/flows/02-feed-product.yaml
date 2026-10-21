@@ -12,9 +12,11 @@ name: 02-feed-product
     text: ".+, .+₽"
     index: 0
 - extendedWaitUntil:
-    visible: "Описание"
+    visible: "Купить"
     timeout: 10000
-- assertVisible: "Купить"
+# На экранах поменьше (Galaxy S9) «Описание» ниже фото и цены — прокрутка.
+- scrollUntilVisible:
+    element: "Описание"
 - assertVisible: "Написать продавцу"
 - takeScreenshot: 02-product
 - tapOn: "Назад"

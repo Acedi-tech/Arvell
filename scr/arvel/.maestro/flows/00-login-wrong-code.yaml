@@ -13,7 +13,9 @@ tags: [server]
 - tapOn:
     text: "\\+7.*"
 - inputText: ${BUYER_PHONE}
-- hideKeyboard
+# Enter закрывает клавиатуру однострочного поля; hideKeyboard жмёт
+# системный «Назад» и без клавиатуры (уводил с анкеты на S9, 21.10).
+- pressKey: Enter
 - tapOn: "Получить код"
 # Тестовый сервер отвечает на запрос кода до 15–20 с.
 - extendedWaitUntil:

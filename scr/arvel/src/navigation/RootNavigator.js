@@ -15,7 +15,12 @@ const Stack = createNativeStackNavigator();
 function AuthModal({ navigation }) {
   const { isLoggedIn } = useAuth();
   useEffect(() => {
-    if (isLoggedIn) navigation.goBack();
+    if (!isLoggedIn) return;
+    // Анкета, открытая на холодном старте (pendingUser), — первый экран стека:
+    // под ней нет MainTabs, и goBack() ничего не делал — человек оставался на
+    // «Расскажите о себе», хотя регистрация прошла (Galaxy S9, 21.10).
+    if (navigation.canGoBack()) navigation.goBack();
+    else navigation.reset({ index: 0, routes: [{ name: 'Main' }] });
   }, [isLoggedIn, navigation]);
   return <AuthNavigator />;
 }

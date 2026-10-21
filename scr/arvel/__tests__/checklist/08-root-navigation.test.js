@@ -82,4 +82,17 @@ describe('Корневая навигация', () => {
     finishSplash();
     expect(screen.getByText('ProfileSetupScreen [focused]')).toBeTruthy();
   });
+
+  it('анкета на холодном старте: после «Завершить» открывается лента, а не остаётся анкета', () => {
+    // Окно входа здесь — первый экран стека, под ним нет MainTabs: goBack()
+    // ничего не делал, и человек оставался на анкете (Galaxy S9, 21.10).
+    setAuth({ bootstrapping: false, isLoggedIn: false, user: null, pendingUser: { id: 'u1' } });
+    renderRoot();
+    finishSplash();
+    expect(navRef.getRootState().routes.map((r) => r.name)).toEqual(['Auth']);
+
+    act(() => { setAuth({ bootstrapping: false, isLoggedIn: true, pendingUser: null }); });
+    expect(navRef.getCurrentRoute().name).toBe('Main');
+    expect(navRef.getRootState().routes.map((r) => r.name)).toEqual(['Main']);
+  });
 });

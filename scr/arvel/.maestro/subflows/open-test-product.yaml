@@ -13,5 +13,5 @@ appId: com.arvell.app
     text: ".*ТЕСТ QA кроссовки.*"
     index: 0
 - extendedWaitUntil:
-    visible: "Описание"
+    visible: "Купить"
     timeout: 15000
