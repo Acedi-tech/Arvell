@@ -1,13 +1,17 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android" xmlns:tools="http://schemas.android.com/tools">
   <uses-permission android:name="android.permission.INTERNET"/>
   <!-- Фото выбираются системным пикером: доступ к памяти нужен только старым
-       Android (до 12 включительно). Микрофон, запись в память и окна поверх
-       других приложению не нужны — убираем, даже если их добавляет библиотека. -->
+       Android (до 12 включительно). expo-image-picker на них просит и чтение,
+       и запись, и без записи считает доступ не выданным — выбор фото и камера
+       молча не открывались на Android 8 (QA 21.10, Galaxy S9). Поэтому запись
+       оставлена с тем же потолком 32: на Android 13+ её нет вовсе.
+       Микрофон и окна поверх других приложению не нужны — убираем, даже если
+       их добавляет библиотека. -->
   <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" android:maxSdkVersion="32" tools:replace="android:maxSdkVersion"/>
+  <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" android:maxSdkVersion="32" tools:replace="android:maxSdkVersion"/>
   <uses-permission android:name="android.permission.VIBRATE"/>
   <uses-permission android:name="android.permission.RECORD_AUDIO" tools:node="remove"/>
   <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" tools:node="remove"/>
-  <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" tools:node="remove"/>
   <queries>
     <intent>
       <action android:name="android.intent.action.VIEW"/>
