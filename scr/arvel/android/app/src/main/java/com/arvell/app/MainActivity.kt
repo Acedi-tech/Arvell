@@ -2,6 +2,7 @@ package com.arvell.app
 
 import android.os.Build
 import android.os.Bundle
+import android.view.View
 
 import com.facebook.react.ReactActivity
 import com.facebook.react.ReactActivityDelegate
@@ -17,6 +18,13 @@ class MainActivity : ReactActivity() {
     // This is required for expo-splash-screen.
     setTheme(R.style.AppTheme);
     super.onCreate(null)
+    // Android до 9 при возврате в окно (например, из выбора фото) сам ставит
+    // фокус в первое поле ввода: форма товара уезжала к «Названию» и
+    // открывалась клавиатура (Galaxy S9, 21.10). Фокусируемый корневой
+    // контейнер забирает этот «автофокус» себе; тап по полю работает как раньше.
+    if (Build.VERSION.SDK_INT < Build.VERSION_CODES.P) {
+      findViewById<View>(android.R.id.content).isFocusableInTouchMode = true
+    }
   }
 
   /**

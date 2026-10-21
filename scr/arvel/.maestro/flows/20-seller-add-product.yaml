@@ -19,9 +19,11 @@ tags: [server, seller]
 # Фото: системный выбор Android, «ТЕСТ QA» — самые свежие в галерее.
 - tapOn: "Добавить фото"
 - runFlow: ../subflows/pick-photo.yaml
-- extendedWaitUntil:
-    visible: "Фотографии \\(1/.*"
-    timeout: 10000
+# Счётчик мог уехать за верх экрана, если форма прокрутилась после выбора.
+- scrollUntilVisible:
+    element: "Фотографии \\(1/.*"
+    direction: UP
+    timeout: 15000
 - tapOn: "Например, Air Max 90"
 - inputText: "${PRODUCT}"
 # Enter закрывает клавиатуру однострочного поля; hideKeyboard жмёт
