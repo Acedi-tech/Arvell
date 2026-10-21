@@ -12,7 +12,7 @@ tags: [server, seller]
     visible: "Чаты"
     timeout: 10000
 - tapOn:
-    text: ".*QA покупатель.*"
+    text: ".*${BUYER_NAME}.*"
     index: 0
 - extendedWaitUntil:
     visible: "ТЕСТ QA: здравствуйте, товар в наличии?"

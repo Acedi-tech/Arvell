@@ -7,16 +7,14 @@
 #   watch-builds.sh --dry-run  — то же без отправки в группу
 #
 # Уже проверенные сборки — в ~/arvel-builds/.gate-done (по id EAS), лог —
-# ~/arvel-builds/gate.log. Телефон — по Wi-Fi (DEVICE, по умолчанию
-# 192.168.31.114:5555); если он не отвечает, сборка остаётся в очереди до
-# следующего запуска.
+# ~/arvel-builds/gate.log. Телефоны — по Wi-Fi, список в .maestro/devices.conf;
+# если не отвечает ни один, сборка остаётся в очереди до следующего запуска.
 set -uo pipefail
 
 APP_DIR=$(cd "$(dirname "$0")/../.." && pwd)
 BUILDS=$HOME/arvel-builds
 DONE=$BUILDS/.gate-done
 LOCK=$BUILDS/.gate.lock
-export DEVICE=${DEVICE:-192.168.31.114:5555}
 SEND=--send
 [ "${1:-}" = --dry-run ] && SEND=
 
@@ -35,9 +33,16 @@ read -r id commit url <<<"$latest"
 grep -qx "$id" "$DONE" && exit 0
 log "новая сборка $id ($commit)"
 
-adb connect "$DEVICE" >/dev/null 2>&1
-if [ "$(adb -s "$DEVICE" get-state 2>&1)" != device ]; then
-  log "телефон $DEVICE не отвечает — сборка $id подождёт следующего запуска"
+# Телефоны — из devices.conf; приёмка идёт, если на связи хотя бы один
+# (недоступный qa-gate пометит «не проверен»).
+online=0
+while IFS='|' read -r name serial _; do
+  case "$name" in ''|'#'*) continue ;; esac
+  adb connect "$serial" </dev/null >/dev/null 2>&1
+  [ "$(adb -s "$serial" get-state </dev/null 2>&1)" = device ] && online=$((online + 1)) || log "$name ($serial) не отвечает"
+done < "$APP_DIR/.maestro/devices.conf"
+if [ "$online" -eq 0 ]; then
+  log "ни один телефон не на связи — сборка $id подождёт следующего запуска"
   exit 1
 fi
 

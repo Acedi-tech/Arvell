@@ -7,7 +7,7 @@ tags: [server, seller]
 - tapOn: "Профиль"
 - tapOn: "Мои объявления"
 - extendedWaitUntil:
-    visible: ".*ТЕСТ QA кроссовки.*"
+    visible: ".*${PRODUCT}.*"
     timeout: 20000
 - tapOn:
     text: "Меню объявления"
@@ -20,5 +20,5 @@ tags: [server, seller]
     text: "Удалить"
     below: "Удалить объявление?"
 - extendedWaitUntil:
-    notVisible: ".*ТЕСТ QA кроссовки.*"
+    notVisible: ".*${PRODUCT}.*"
     timeout: 20000

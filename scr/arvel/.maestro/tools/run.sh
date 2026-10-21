@@ -18,7 +18,7 @@ set -uo pipefail
 ROOT=$(cd "$(dirname "$0")/.." && pwd)
 APP_ID=com.arvell.app
 APK=${1:-}
-OUT=$ROOT/out/$(date +%Y-%m-%d_%H%M)
+OUT=$ROOT/out/$(date +%Y-%m-%d_%H%M)${LABEL:+_$LABEL}
 MAESTRO=${MAESTRO:-$HOME/.maestro/bin/maestro}
 export MAESTRO_CLI_NO_ANALYTICS=1 MAESTRO_CLI_ANALYSIS_NOTIFICATION_DISABLED=true
 mkdir -p "$OUT"
@@ -63,7 +63,7 @@ done
 adb shell svc power stayon true >/dev/null 2>&1
 adb shell input keyevent KEYCODE_WAKEUP
 sleep 1
-if adb shell dumpsys window | grep -q 'isKeyguardShowing=true'; then
+if adb shell dumpsys window | grep -qE 'isKeyguardShowing=true|mShowingLockscreen=true'; then
   fail "экран телефона заблокирован — разблокируйте его один раз, дальше он не будет гаснуть, пока заряжается"
 fi
 
@@ -76,6 +76,7 @@ adb uninstall dev.mobile.maestro >/dev/null 2>&1
 "$AUTOACCEPT" $$ --driver >> "$OUT/autoaccept.log" 2>&1 &
 "$MAESTRO" "${MAESTRO_DEVICE[@]}" test "$ROOT" ${MAESTRO_ARGS:-} \
   -e BUYER_PHONE="${BUYER_PHONE:-9991234567}" -e SELLER_PHONE="${SELLER_PHONE:-9990020001}" \
+  -e PRODUCT="ТЕСТ QA кроссовки ${PRODUCT_TAG:-X13}" -e BUYER_NAME="${BUYER_NAME:-QA покупатель}" \
   --format junit --output "$OUT/report.xml" \
   --test-output-dir "$OUT" 2>&1 | tee "$OUT/maestro.log"
 code=${PIPESTATUS[0]}

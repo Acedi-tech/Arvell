@@ -2,8 +2,8 @@
 // Приёмка сборки ARVELL: автотесты + E2E на телефоне → вердикт → отчёт в группу.
 //
 // 1. Jest + сверка с чек-листом (scripts/checklist-report.js).
-// 2. APK ставится на телефон по USB, гоняются сценарии Maestro
-//    (.maestro/tools/run.sh).
+// 2. APK ставится на телефоны из .maestro/devices.conf (adb по Wi-Fi), на
+//    всех параллельно гоняются сценарии Maestro (.maestro/tools/run.sh).
 // 3. Вердикт: «рекомендую», если ничего не упало ни там, ни там. Пункт
 //    чек-листа без теста — предупреждение, не провал: это вопрос к таблице,
 //    а не к сборке.
@@ -15,7 +15,7 @@
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
-const { spawnSync } = require('child_process');
+const { spawn, spawnSync } = require('child_process');
 
 const ROOT = path.resolve(__dirname, '..');
 const args = process.argv.slice(2);
@@ -62,11 +62,48 @@ function unitTests() {
   };
 }
 
-// --- 2. E2E на телефоне ---
+// --- 2. E2E на телефонах ---
 
-function e2e() {
-  if (!fs.existsSync(apk)) return { error: `нет APK ${apk}` };
-  const { out } = run(path.join(ROOT, '.maestro', 'tools', 'run.sh'), [apk]);
+// .maestro/devices.conf: «название|adb-адрес|покупатель|продавец|метка|имя покупателя».
+function loadDevices() {
+  const file = path.join(ROOT, '.maestro', 'devices.conf');
+  return fs.readFileSync(file, 'utf8').split('\n')
+    .map((l) => l.trim()).filter((l) => l && !l.startsWith('#'))
+    .map((l) => {
+      const [name, serial, buyer, seller, tag, buyerName] = l.split('|').map((x) => x.trim());
+      return { name, serial, buyer, seller, tag, buyerName };
+    });
+}
+
+// Сбой стенда (телефон не на связи, экран заблокирован) — не вердикт по сборке.
+const STAND_FAILURE = /отключился|не готов|нет APK|заблокирован|не записал отчёт/;
+
+function runAsync(cmd, cmdArgs, env) {
+  return new Promise((resolve) => {
+    const child = spawn(cmd, cmdArgs, { cwd: ROOT, env: { ...process.env, ...env } });
+    let out = '';
+    child.stdout.on('data', (d) => { out += d; });
+    child.stderr.on('data', (d) => { out += d; });
+    child.on('close', (code) => resolve({ code, out }));
+  });
+}
+
+async function e2eOn(device) {
+  if (!fs.existsSync(apk)) return { device, error: `нет APK ${apk}` };
+  console.log(`\n$ run.sh на ${device.name} (${device.serial})`);
+  const { out } = await runAsync(path.join(ROOT, '.maestro', 'tools', 'run.sh'), [apk], {
+    DEVICE: device.serial,
+    LABEL: device.tag,
+    BUYER_PHONE: device.buyer,
+    SELLER_PHONE: device.seller,
+    PRODUCT_TAG: device.tag,
+    BUYER_NAME: device.buyerName,
+  });
+  console.log(`--- ${device.name} ---\n${out.split('\n').filter((l) => /^\[|^❌|Сборка от/.test(l)).join('\n')}`);
+  return { device, ...parseE2e(out) };
+}
+
+function parseE2e(out) {
   const dir = (out.match(/Отчёт: (.+)$/m) || [])[1];
   const fatal = (out.match(/^❌ (.+)$/m) || [])[1];
   if (fatal) return { error: fatal };
@@ -95,11 +132,13 @@ function gitLabel() {
   return r.stdout.trim();
 }
 
-function compose(unit, phone) {
+function compose(unit, phones) {
   const unitOk = !unit.error && unit.failed === 0 && unit.extraFailedCount === 0;
-  const phoneFailed = phone.flows ? phone.flows.filter((f) => f.failed) : [];
-  const phoneOk = skipE2e || (!phone.error && phone.flows.length > 0 && phoneFailed.length === 0);
-  const recommend = unitOk && phoneOk;
+  // Не на связи — «не проверен», вердикт по остальным; хотя бы один должен
+  // быть проверен (иначе main() вообще ничего не шлёт).
+  const checked = phones.filter((p) => !(p.error && STAND_FAILURE.test(p.error)));
+  const phoneOk = (p) => !p.error && p.flows.length > 0 && p.flows.every((f) => !f.failed);
+  const recommend = unitOk && (skipE2e || (checked.length > 0 && checked.every(phoneOk)));
 
   const lines = [
     recommend ? '✅ <b>ARVELL — сборку рекомендую</b>' : '⛔ <b>ARVELL — сборку не рекомендую</b>',
@@ -117,13 +156,18 @@ function compose(unit, phone) {
     for (const t of unit.extraFailed) lines.push(`   ❌ ${h(t)}`);
   }
 
-  if (skipE2e) lines.push('⏭️ Телефон: E2E пропущены');
-  else if (phone.error) lines.push(`❌ Телефон: ${h(phone.error)}`);
-  else {
-    const passed = phone.flows.length - phoneFailed.length;
-    lines.push(`${phoneOk ? '✅' : '❌'} Телефон (Redmi Note 11 Pro+): сценариев ${passed}/${phone.flows.length}`);
-    for (const f of phone.flows) {
-      lines.push(`   ${f.failed ? '❌' : '✓'} ${h(f.name)}${f.failed ? ` — ${h(f.message)}` : ''}`);
+  if (skipE2e) lines.push('⏭️ Телефоны: E2E пропущены');
+  for (const p of skipE2e ? [] : phones) {
+    const name = h(p.device.name);
+    if (p.error && STAND_FAILURE.test(p.error)) {
+      lines.push(`⏭️ ${name}: не проверен — ${h(p.error)}`);
+    } else if (p.error) {
+      lines.push(`❌ ${name}: ${h(p.error)}`);
+    } else {
+      const passed = p.flows.filter((f) => !f.failed).length;
+      lines.push(`${phoneOk(p) ? '✅' : '❌'} ${name}: сценариев ${passed}/${p.flows.length}`);
+      // Зелёный телефон — одной строкой, упавший — с причинами.
+      for (const f of p.flows.filter((x) => x.failed)) lines.push(`   ❌ ${h(f.name)} — ${h(f.message)}`);
     }
   }
 
@@ -137,21 +181,23 @@ function compose(unit, phone) {
 
 (async () => {
   const unit = unitTests();
-  const phone = skipE2e ? {} : e2e();
-  // Телефон не на связи — это сбой стенда, а не вердикт по сборке: в группу
-  // ничего не шлём, код 2 — watch-builds.sh попробует эту сборку снова.
-  if (phone.error && /отключился|не готов|нет APK|заблокирован|не записал отчёт/.test(phone.error)) {
-    console.error(`\nПриёмка не проведена: ${phone.error}`);
+  // Телефоны — параллельно: у каждого свои аккаунты и свой товар (devices.conf).
+  const phones = skipE2e ? [] : await Promise.all(loadDevices().map(e2eOn));
+  // Ни один телефон не на связи — сбой стенда, а не вердикт по сборке: в
+  // группу ничего не шлём, код 2 — watch-builds.sh попробует сборку снова.
+  if (!skipE2e && phones.every((p) => p.error && STAND_FAILURE.test(p.error))) {
+    console.error(`\nПриёмка не проведена: ${phones.map((p) => `${p.device.name}: ${p.error}`).join('; ')}`);
     process.exit(2);
   }
-  const { recommend, html } = compose(unit, phone);
+  const { recommend, html } = compose(unit, phones);
+  const shots = phones.flatMap((p) => (p.shots || []).map((s) => ({ ...s, device: p.device.name })));
 
   console.log(`\n\n===== Отчёт =====\n${html.replace(/<\/?b>/g, '')}\n`);
 
   if (send) {
     const { sendMessage, sendDocument } = require('./telegram');
     await sendMessage(html);
-    for (const s of (phone.shots || []).slice(0, 3)) await sendDocument(s.file, `Скриншот падения: ${s.flow}`);
+    for (const s of shots.slice(0, 4)) await sendDocument(s.file, `Скриншот падения: ${s.device} — ${s.flow}`);
     if (recommend) {
       const real = fs.realpathSync(apk);
       if (fs.statSync(real).size <= TG_FILE_LIMIT) await sendDocument(real, 'Рекомендованная сборка — можно ставить');

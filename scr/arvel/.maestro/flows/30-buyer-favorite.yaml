@@ -13,12 +13,12 @@ tags: [server, buyer]
 - tapOn: "Назад"
 - tapOn: "Избранное"
 - extendedWaitUntil:
-    visible: ".*ТЕСТ QA кроссовки.*"
+    visible: ".*${PRODUCT}.*"
     timeout: 15000
 - takeScreenshot: 30-favorites
 - tapOn:
     text: ".*(В избранном|Убрать из избранного).*"
     index: 0
 - extendedWaitUntil:
-    notVisible: ".*ТЕСТ QA кроссовки.*"
+    notVisible: ".*${PRODUCT}.*"
     timeout: 15000

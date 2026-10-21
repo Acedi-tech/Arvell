@@ -29,7 +29,7 @@ tags: [server, seller]
     visible: "Фотографии \\(1/.*"
     timeout: 10000
 - tapOn: "Например, Air Max 90"
-- inputText: "ТЕСТ QA кроссовки"
+- inputText: "${PRODUCT}"
 # Enter закрывает клавиатуру однострочного поля; hideKeyboard жмёт
 # системный «Назад» и без клавиатуры (уводил с анкеты на S9, 21.10).
 - pressKey: Enter
@@ -70,6 +70,6 @@ tags: [server, seller]
     timeout: 60000
 - tapOn: "Отлично"
 - extendedWaitUntil:
-    visible: ".*ТЕСТ QA кроссовки.*"
+    visible: ".*${PRODUCT}.*"
     timeout: 20000
 - takeScreenshot: 20-my-listings

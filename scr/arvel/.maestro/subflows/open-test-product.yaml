@@ -1,4 +1,4 @@
-# Найти через поиск каталога товар «ТЕСТ QA кроссовки» и открыть его.
+# Найти через поиск каталога товар «${PRODUCT}» и открыть его.
 appId: com.arvell.app
 ---
 - tapOn: "Каталог"
@@ -7,10 +7,10 @@ appId: com.arvell.app
 - tapOn: "Поиск брендов..."
 - inputText: "ТЕСТ QA"
 - extendedWaitUntil:
-    visible: ".*ТЕСТ QA кроссовки.*"
+    visible: ".*${PRODUCT}.*"
     timeout: 20000
 - tapOn:
-    text: ".*ТЕСТ QA кроссовки.*"
+    text: ".*${PRODUCT}.*"
     index: 0
 - extendedWaitUntil:
     visible: "Купить"
