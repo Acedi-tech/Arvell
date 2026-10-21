@@ -17,17 +17,7 @@ tags: [server, buyer]
     timeout: 20000
 # Фото в чат.
 - tapOn: "Прикрепить фото"
-- extendedWaitUntil:
-    visible: "Фото"
-    timeout: 10000
-- tapOn:
-    text: "Фото, дата и время съемки.*"
-    index: 0
-- runFlow:
-    when:
-      visible: "Готово"
-    commands:
-      - tapOn: "Готово"
+- runFlow: ../subflows/pick-photo.yaml
 - runFlow:
     when:
       visible: "Убрать фото"

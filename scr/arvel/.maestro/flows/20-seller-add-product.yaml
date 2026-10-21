@@ -18,13 +18,7 @@ tags: [server, seller]
 - tapOn: "Обувь › Кроссовки"
 # Фото: системный выбор Android, «ТЕСТ QA» — самые свежие в галерее.
 - tapOn: "Добавить фото"
-- extendedWaitUntil:
-    visible: "Фото"
-    timeout: 10000
-- tapOn:
-    text: "Фото, дата и время съемки.*"
-    index: 0
-- tapOn: "Готово"
+- runFlow: ../subflows/pick-photo.yaml
 - extendedWaitUntil:
     visible: "Фотографии \\(1/.*"
     timeout: 10000

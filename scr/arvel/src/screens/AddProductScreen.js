@@ -338,7 +338,18 @@ export default function AddProductScreen({ navigation }) {
         <Text style={[styles.label, { marginTop: spacing.lg }]}>
           {`Фотографии (${photos.length}/${maxImages})`}
         </Text>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.photoRow}>
+        {/* «Добавить фото» — вне горизонтальной прокрутки: на Android 8 она
+            считала себя «докручивающейся по инерции» и забирала первое
+            касание, так что кнопка срабатывала только со второго тапа
+            (ScrollView._isAnimating, Galaxy S9, 21.10). */}
+        <View style={styles.photoStrip}>
+        {photos.length < maxImages && (
+          <Pressable style={[styles.photoBox, styles.photoBoxEmpty]} accessibilityLabel="Добавить фото" onPress={addPhotos}>
+            <CameraIcon size={22} color={colors.accent} />
+            {photos.length === 0 && <Text style={styles.photoHint}>главное</Text>}
+          </Pressable>
+        )}
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.photoRow} style={styles.photoScroll}>
           {photos.map((p, i) => (
             <View key={p.uri} style={[styles.photoBox, i === 0 && styles.photoBoxMainFilled]}>
               <Image source={{ uri: p.uri }} style={styles.photoImage} resizeMode="cover" />
@@ -352,13 +363,8 @@ export default function AddProductScreen({ navigation }) {
               </Pressable>
             </View>
           ))}
-          {photos.length < maxImages && (
-            <Pressable style={[styles.photoBox, styles.photoBoxEmpty]} accessibilityLabel="Добавить фото" onPress={addPhotos}>
-              <CameraIcon size={22} color={colors.accent} />
-              {photos.length === 0 && <Text style={styles.photoHint}>главное</Text>}
-            </Pressable>
-          )}
         </ScrollView>
+        </View>
 
         <View style={{ marginTop: spacing.lg }}>
           <DropdownField
@@ -529,6 +535,8 @@ const styles = StyleSheet.create({
   noticeText: { color: colors.danger, fontSize: font.sizeSM },
   error: { color: colors.danger, fontSize: font.sizeSM, marginTop: spacing.lg },
 
+  photoStrip: { flexDirection: 'row', gap: spacing.sm },
+  photoScroll: { flex: 1 },
   photoRow: { gap: spacing.sm },
   photoBox: {
     width: 88, height: 88, borderRadius: radius.md, backgroundColor: colors.surface,
