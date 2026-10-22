@@ -2,7 +2,7 @@
 // Разделы одинаковы у покупателя и продавца (один и тот же код экранов) —
 // различия по роли проверяются отдельными тестами в конце файла.
 import React from 'react';
-import { Share, FlatList, Image } from 'react-native';
+import { Share, FlatList, Image, Keyboard } from 'react-native';
 import { render, screen, fireEvent, waitFor, act } from '@testing-library/react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
@@ -367,6 +367,20 @@ forEachRole(({ t }) => {
         fireEvent.changeText(input(), 'Nike');
         fireEvent.press(await screen.findByText('Air Max 90'));
         expect(navigation.navigate).toHaveBeenCalledWith('Product', { id: 'p1' });
+      });
+
+      // Результаты держат клавиатуру при тапе (keyboardShouldPersistTaps), и на
+      // Android 8 она оставалась открытой поверх карточки и закрывала «Купить».
+      it('Search: переход к товару закрывает клавиатуру', async () => {
+        const dismiss = jest.spyOn(Keyboard, 'dismiss');
+        setProducts({ products: [{ ...adidas, id: 'fy1' }] });
+        render(<SearchScreen navigation={navigation} />);
+        fireEvent.press(screen.getByText('9 900,50 €'));
+        expect(dismiss).toHaveBeenCalledTimes(1);
+        fireEvent.changeText(input(), 'Nike');
+        fireEvent.press(await screen.findByText('Air Max 90'));
+        expect(dismiss).toHaveBeenCalledTimes(2);
+        dismiss.mockRestore();
       });
     });
   });

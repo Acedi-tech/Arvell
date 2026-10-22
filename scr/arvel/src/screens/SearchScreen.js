@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { View, Text, TextInput, FlatList, StyleSheet, Pressable, ScrollView, ActivityIndicator } from 'react-native';
+import { View, Text, TextInput, FlatList, StyleSheet, Pressable, ScrollView, ActivityIndicator, Keyboard } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { colors, spacing, radius, font } from '../theme';
@@ -67,6 +67,14 @@ export default function SearchScreen({ navigation }) {
       if (recentLoaded.current) AsyncStorage.setItem(RECENT_KEY, JSON.stringify(next)).catch(() => {});
       return next;
     });
+  };
+
+  // Списки держат клавиатуру при тапе (keyboardShouldPersistTaps), поэтому
+  // закрываем её сами — на Android 8 она оставалась поверх карточки товара
+  // и закрывала «Купить».
+  const openProduct = (id) => {
+    Keyboard.dismiss();
+    navigation.navigate('Product', { id });
   };
 
   useEffect(() => {
@@ -143,7 +151,7 @@ export default function SearchScreen({ navigation }) {
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
           renderItem={({ item }) => (
-            <ProductCard product={item} onPress={() => navigation.navigate('Product', { id: item.id })} />
+            <ProductCard product={item} onPress={() => openProduct(item.id)} />
           )}
           ListHeaderComponent={
             // Бренды, чьё название начинается похоже на введённый текст —
@@ -212,7 +220,7 @@ export default function SearchScreen({ navigation }) {
               <Pressable
                 key={p.id}
                 style={styles.forYouCard}
-                onPress={() => navigation.navigate('Product', { id: p.id })}
+                onPress={() => openProduct(p.id)}
               >
                 <View style={styles.forYouImg}>
                   {resolveMediaUrl(p.thumbnail_url) ? (
