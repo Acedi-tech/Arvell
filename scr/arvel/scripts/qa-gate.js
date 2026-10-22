@@ -134,8 +134,7 @@ function gitLabel() {
 
 function compose(unit, phones) {
   const unitOk = !unit.error && unit.failed === 0 && unit.extraFailedCount === 0;
-  // Не на связи — «не проверен», вердикт по остальным; хотя бы один должен
-  // быть проверен (иначе main() вообще ничего не шлёт).
+  // Сюда доходят, только когда проверены все телефоны (см. main()).
   const checked = phones.filter((p) => !(p.error && STAND_FAILURE.test(p.error)));
   const phoneOk = (p) => !p.error && p.flows.length > 0 && p.flows.every((f) => !f.failed);
   const recommend = unitOk && (skipE2e || (checked.length > 0 && checked.every(phoneOk)));
@@ -183,9 +182,11 @@ function compose(unit, phones) {
   const unit = unitTests();
   // Телефоны — параллельно: у каждого свои аккаунты и свой товар (devices.conf).
   const phones = skipE2e ? [] : await Promise.all(loadDevices().map(e2eOn));
-  // Ни один телефон не на связи — сбой стенда, а не вердикт по сборке: в
+  // Хоть один телефон не проверен — сбой стенда, а не вердикт по сборке: в
   // группу ничего не шлём, код 2 — watch-builds.sh попробует сборку снова.
-  if (!skipE2e && phones.every((p) => p.error && STAND_FAILURE.test(p.error))) {
+  // Раньше вердикт выносился по остальным, и 22.10 ушло ложное «рекомендую»:
+  // Redmi 13/13, а S9, где сборка падала, «не проверен».
+  if (!skipE2e && phones.some((p) => p.error && STAND_FAILURE.test(p.error))) {
     console.error(`\nПриёмка не проведена: ${phones.map((p) => `${p.device.name}: ${p.error}`).join('; ')}`);
     process.exit(2);
   }
