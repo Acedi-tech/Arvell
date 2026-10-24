@@ -332,16 +332,16 @@ describe('РЕГИСТРАЦИЯ И ВХОД', () => {
       render(<ProfileSetupScreen navigation={navigation} />);
       fireEvent.press(screen.getByText('Я продавец'));
       fireEvent.press(screen.getByText('Я покупатель'));
-      expect(screen.queryByPlaceholderText('Код приглашения от продавца')).toBeNull();
+      expect(screen.queryByPlaceholderText('Код из приглашения ARVELL')).toBeNull();
       expect(screen.getByText('Завершить')).toBeTruthy();
     });
 
     it('Переключатель «Я продавец»', () => {
       render(<ProfileSetupScreen navigation={navigation} />);
       fireEvent.press(screen.getByText('Я продавец'));
-      expect(screen.getByPlaceholderText('Код приглашения от продавца')).toBeTruthy();
+      expect(screen.getByPlaceholderText('Код из приглашения ARVELL')).toBeTruthy();
       expect(screen.getByPlaceholderText('Например, Alex Sneaker Shop')).toBeTruthy();
-      expect(screen.getByText('Отправить код продавцу')).toBeTruthy();
+      expect(screen.getByText('Получить код из SMS')).toBeTruthy();
     });
   });
 
@@ -419,12 +419,12 @@ describe('РЕГИСТРАЦИЯ И ВХОД', () => {
     const fillSellerForm = ({ name = 'Алекс', invite = 'INV-123', shop = 'Alex Shop' } = {}) => {
       fireEvent.changeText(screen.getByPlaceholderText('Введите имя'), name);
       fireEvent.press(screen.getByText('Я продавец'));
-      fireEvent.changeText(screen.getByPlaceholderText('Код приглашения от продавца'), invite);
+      fireEvent.changeText(screen.getByPlaceholderText('Код из приглашения ARVELL'), invite);
       fireEvent.changeText(screen.getByPlaceholderText('Например, Alex Sneaker Shop'), shop);
     };
     const goToOtp = async (auth) => {
       fillSellerForm();
-      fireEvent.press(screen.getByText('Отправить код продавцу'));
+      fireEvent.press(screen.getByText('Получить код из SMS'));
       await waitFor(() => expect(auth.sellerAcceptInvite).toHaveBeenCalled());
       await screen.findByText('Код из SMS');
     };
@@ -432,10 +432,10 @@ describe('РЕГИСТРАЦИЯ И ВХОД', () => {
     it('Поле «Код приглашения»', () => {
       render(<ProfileSetupScreen navigation={navigation} />);
       fireEvent.press(screen.getByText('Я продавец'));
-      const field = screen.getByPlaceholderText('Код приглашения от продавца');
+      const field = screen.getByPlaceholderText('Код из приглашения ARVELL');
       fireEvent.changeText(field, '  INV-123  ');
       // Пробелы по краям при вставке убираются.
-      expect(screen.getByPlaceholderText('Код приглашения от продавца').props.value).toBe('INV-123');
+      expect(screen.getByPlaceholderText('Код из приглашения ARVELL').props.value).toBe('INV-123');
     });
 
     it('Поле «Название магазина»', () => {
@@ -445,16 +445,16 @@ describe('РЕГИСТРАЦИЯ И ВХОД', () => {
       expect(screen.getByPlaceholderText('Например, Alex Sneaker Shop').props.value).toBe('Alex Shop');
     });
 
-    it('Кнопка «Отправить код продавцу»', async () => {
+    it('Кнопка «Получить код из SMS»', async () => {
       const auth = setAuth();
       render(<ProfileSetupScreen navigation={navigation} />);
       // Пустая форма — кнопка неактивна.
       fireEvent.press(screen.getByText('Я продавец'));
-      fireEvent.press(screen.getByText('Отправить код продавцу'));
+      fireEvent.press(screen.getByText('Получить код из SMS'));
       expect(auth.sellerAcceptInvite).not.toHaveBeenCalled();
 
       fillSellerForm();
-      fireEvent.press(screen.getByText('Отправить код продавцу'));
+      fireEvent.press(screen.getByText('Получить код из SMS'));
       await waitFor(() => expect(auth.sellerAcceptInvite).toHaveBeenCalledWith('INV-123', '+79990001122'));
       expect(await screen.findByText('Код из SMS')).toBeTruthy();
       // Шаг кода — не повтор анкеты: ни заголовка «Расскажите о себе», ни полей.
@@ -468,7 +468,7 @@ describe('РЕГИСТРАЦИЯ И ВХОД', () => {
       setAuth({ sellerAcceptInvite: jest.fn(async () => { throw new Error('Приглашение недействительно'); }) });
       render(<ProfileSetupScreen navigation={navigation} />);
       fillSellerForm();
-      fireEvent.press(screen.getByText('Отправить код продавцу'));
+      fireEvent.press(screen.getByText('Получить код из SMS'));
       expect(await screen.findByText('Приглашение недействительно')).toBeTruthy();
       expect(screen.queryByText('Код из SMS')).toBeNull();
     });
@@ -488,7 +488,7 @@ describe('РЕГИСТРАЦИЯ И ВХОД', () => {
       await goToOtp(auth);
       fireEvent.press(screen.getByText('Изменить код приглашения'));
       expect(screen.queryByText('Код из SMS')).toBeNull();
-      expect(screen.getByPlaceholderText('Код приглашения от продавца').props.value).toBe('INV-123');
+      expect(screen.getByPlaceholderText('Код из приглашения ARVELL').props.value).toBe('INV-123');
     });
 
     it('Шаг OTP: кнопка «Подтвердить код» (неактивна < 4 цифр)', async () => {

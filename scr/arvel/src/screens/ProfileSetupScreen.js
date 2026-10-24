@@ -146,7 +146,7 @@ export default function ProfileSetupScreen({ navigation }) {
       await sellerAcceptInvite(invite, pendingPhone);
       setSellerOtpStep(true);
     } catch (e) {
-      setFormError(e.message || 'Не удалось проверить код приглашения. Проверьте его у продавца.');
+      setFormError(e.message || 'Не удалось проверить код приглашения. Уточните его у команды ARVELL.');
     } finally {
       setSubmitting(false);
     }
@@ -189,7 +189,7 @@ export default function ProfileSetupScreen({ navigation }) {
     : canSubmitForm;
 
   const finishTitle = isSeller
-    ? (sellerOtpStep ? 'Подтвердить код' : 'Отправить код продавцу')
+    ? (sellerOtpStep ? 'Подтвердить код' : 'Получить код из SMS')
     : 'Завершить';
 
   return (
@@ -243,7 +243,7 @@ export default function ProfileSetupScreen({ navigation }) {
           <>
             <Text style={[styles.label, { marginTop: spacing.xl }]}>Код из SMS</Text>
             <Text style={styles.note}>
-              Отправили код на {pendingPhone} для подтверждения продавца.
+              Отправили код на {pendingPhone}, чтобы подтвердить регистрацию продавца.
             </Text>
             <TextInput
               style={[styles.input, { marginTop: spacing.sm, letterSpacing: 6, textAlign: 'center' }]}
@@ -284,7 +284,7 @@ export default function ProfileSetupScreen({ navigation }) {
               onPress={() => setRole('seller')}
               icon={<ShieldIcon size={22} color={role === 'seller' ? colors.accentText : colors.textMuted} filled={role === 'seller'} />}
               title="Я продавец"
-              subtitle="Только по приглашению"
+              subtitle="Только по приглашению ARVELL"
             />
 
             {isSeller && (
@@ -292,7 +292,7 @@ export default function ProfileSetupScreen({ navigation }) {
                 <Text style={[styles.label, { marginTop: spacing.lg }]}>Код приглашения</Text>
                 <TextInput
                   style={styles.input}
-                  placeholder="Код приглашения от продавца"
+                  placeholder="Код из приглашения ARVELL"
                   placeholderTextColor={colors.textFaint}
                   autoCapitalize="none"
                   autoCorrect={false}
@@ -301,8 +301,8 @@ export default function ProfileSetupScreen({ navigation }) {
                   onFocus={() => setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 300)}
                 />
                 <Text style={styles.note}>
-                  Продавцы регистрируются только по приглашению. Код можно получить у
-                  действующего продавца ARVELL.
+                  Продавцы регистрируются только по приглашению. Код
+                  приглашения выдаёт команда ARVELL.
                 </Text>
 
                 <Text style={[styles.label, { marginTop: spacing.lg }]}>Название магазина</Text>
