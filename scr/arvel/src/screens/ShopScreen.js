@@ -5,6 +5,7 @@ import { colors, spacing, font } from '../theme';
 import { BackIcon, StarIcon } from '../components/Icons';
 import ProductCard from '../components/ProductCard';
 import { listProducts } from '../api/products';
+import { reviewsCount } from '../utils/plural';
 
 export default function ShopScreen({ navigation, route }) {
   const { shopId, shopName, rating, ratingCount } = route?.params || {};
@@ -40,11 +41,20 @@ export default function ShopScreen({ navigation, route }) {
         </Pressable>
         <View style={{ flex: 1 }}>
           <Text style={styles.shopName} numberOfLines={1}>{shopName || 'Продавец'}</Text>
-          {rating != null && (
-            <View style={styles.ratingRow}>
+          {rating != null ? (
+            <Pressable
+              style={styles.ratingRow}
+              hitSlop={8}
+              accessibilityRole="button"
+              onPress={() => navigation.navigate('Reviews', { shopId, title: shopName, rating, ratingCount })}
+            >
               <StarIcon size={14} />
-              <Text style={styles.ratingText}>{rating.toFixed(1)} · {ratingCount ?? 0} отзывов</Text>
-            </View>
+              <Text style={styles.ratingText}>
+                {rating.toFixed(1)} · <Text style={styles.ratingLink}>{reviewsCount(ratingCount)}</Text>
+              </Text>
+            </Pressable>
+          ) : (
+            <Text style={styles.ratingText}>Пока нет отзывов</Text>
           )}
         </View>
       </View>
@@ -85,6 +95,7 @@ const styles = StyleSheet.create({
   shopName: { color: colors.text, fontSize: font.sizeLG, fontWeight: '800' },
   ratingRow: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 2 },
   ratingText: { color: colors.textMuted, fontSize: font.sizeSM },
+  ratingLink: { color: colors.accent, fontSize: font.sizeSM, fontWeight: '700' },
   grid: { paddingHorizontal: spacing.sm, paddingTop: spacing.md, paddingBottom: spacing.xl },
   empty: { color: colors.textMuted, textAlign: 'center', marginTop: spacing.xl },
 });

@@ -4,6 +4,8 @@ import { useAuth } from '../context/AuthContext';
 import AuthNavigator from './AuthNavigator';
 import MainTabs from './MainTabs';
 import ConversationScreen from '../screens/ConversationScreen';
+import ReviewsScreen from '../screens/ReviewsScreen';
+import WriteReviewScreen from '../screens/WriteReviewScreen';
 import AnimatedSplash from '../components/AnimatedSplash';
 
 const Stack = createNativeStackNavigator();
@@ -51,6 +53,10 @@ export default function RootNavigator() {
           переходом (поле ввода "прыгало" при открытии, таббар мигал при
           закрытии). */}
       <Stack.Screen name="Conversation" component={ConversationScreen} />
+      {/* Отзывы открываются с товара, магазина и из сделок в разных вкладках —
+          держим их в корне, как чат, чтобы «Назад» всегда вёл туда, откуда пришли. */}
+      <Stack.Screen name="Reviews" component={ReviewsScreen} />
+      <Stack.Screen name="WriteReview" component={WriteReviewScreen} />
       <Stack.Screen
         name="Auth"
         component={AuthModal}

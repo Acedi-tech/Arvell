@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { useFocusEffect } from '@react-navigation/native';
 import {
   View, Text, StyleSheet, Pressable, ScrollView, Image, ActivityIndicator, Share, useWindowDimensions,
 } from 'react-native';
@@ -12,6 +13,10 @@ import { useAuth } from '../context/AuthContext';
 import { resolveMediaUrl } from '../utils/media';
 import { productUrl } from '../utils/links';
 import RemoteImage from '../components/RemoteImage';
+import ReviewItem from '../components/ReviewItem';
+import StarRating from '../components/StarRating';
+import { listProductReviews } from '../api/reviews';
+import { reviewsCount } from '../utils/plural';
 
 export default function ProductScreen({ navigation, route }) {
   const id = route?.params?.id;
@@ -82,6 +87,24 @@ export default function ProductScreen({ navigation, route }) {
     };
   }, [id]);
 
+  // Отзывы о товаре: пара последних прямо на странице, остальные — по ссылке.
+  // Перечитываем товар и отзывы при каждом возвращении на экран: после
+  // отправки отзыва должны обновиться рейтинг и кнопка «Оставить отзыв».
+  const [reviews, setReviews] = useState([]);
+  const [focusTick, setFocusTick] = useState(0);
+  useFocusEffect(React.useCallback(() => { setFocusTick((t) => t + 1); }, []));
+  useEffect(() => {
+    if (!id || focusTick === 0) return undefined;
+    let cancelled = false;
+    listProductReviews(id, { limit: 2 })
+      .then((res) => { if (!cancelled) setReviews(res?.data ?? []); })
+      .catch(() => {});
+    if (focusTick > 1) {
+      getProduct(id).then((p) => { if (!cancelled) setProduct(p); }).catch(() => {});
+    }
+    return () => { cancelled = true; };
+  }, [id, focusTick]);
+
   if (loading) {
     return (
       <View style={[styles.safe, styles.center]}>
@@ -121,6 +144,21 @@ export default function ProductScreen({ navigation, route }) {
   const shop = product.seller;
   // seller.id — это магазин, а seller.seller_id — пользователь-владелец.
   const isOwn = !!user?.id && shop?.seller_id === user.id;
+  const canReview = !!product.viewer_context?.can_review;
+  const myReviewId = product.viewer_context?.my_review_id;
+  const productTitle = [brandLabel, product.title].filter(Boolean).join(' ');
+  const ratingCount = product.rating_count ?? 0;
+  const openWriteReview = () => navigation.navigate('WriteReview', {
+    productId: product.id,
+    title: productTitle,
+    thumbnail: photoUrls[0] || null,
+  });
+  const openAllReviews = () => navigation.navigate('Reviews', {
+    productId: product.id,
+    title: productTitle,
+    rating: product.rating,
+    ratingCount,
+  });
 
   return (
     <View style={styles.safe}>
@@ -210,6 +248,39 @@ export default function ProductScreen({ navigation, route }) {
           <Text style={styles.sectionTitle}>Описание</Text>
           <Text style={styles.description}>{product.description}</Text>
 
+          {(ratingCount > 0 || canReview || !!myReviewId) && (
+            <>
+              <View style={styles.divider} />
+              <View style={styles.reviewsHead}>
+                <Text style={styles.reviewsTitle}>Отзывы о товаре</Text>
+                {ratingCount > 0 && (
+                  <Pressable hitSlop={8} onPress={openAllReviews}>
+                    <Text style={styles.reviewsLink}>Все</Text>
+                  </Pressable>
+                )}
+              </View>
+              {ratingCount > 0 && product.rating != null && (
+                <Pressable style={styles.reviewsSummary} onPress={openAllReviews}>
+                  <StarRating value={product.rating} size={16} />
+                  <Text style={styles.reviewsSummaryText}>
+                    {product.rating.toFixed(1)} · {reviewsCount(ratingCount)}
+                  </Text>
+                </Pressable>
+              )}
+              {reviews.map((r, i) => (
+                <ReviewItem key={r.id} review={r} last={i === reviews.length - 1} />
+              ))}
+              {canReview && (
+                <Pressable style={styles.reviewBtn} onPress={openWriteReview}>
+                  <Text style={styles.reviewBtnText}>Оставить отзыв</Text>
+                </Pressable>
+              )}
+              {!canReview && !!myReviewId && (
+                <Text style={styles.reviewDone}>Вы уже оставили отзыв на этот товар</Text>
+              )}
+            </>
+          )}
+
           {shop && (
             <>
               <View style={styles.divider} />
@@ -234,7 +305,7 @@ export default function ProductScreen({ navigation, route }) {
                 </View>
                 <View style={{ flex: 1 }}>
                   <Text style={styles.sellerName}>{shop.shop_name}</Text>
-                  <Text style={styles.sellerDeals}>{shop.rating_count ?? 0} отзывов</Text>
+                  <Text style={styles.sellerDeals}>{reviewsCount(shop.rating_count)}</Text>
                 </View>
                 <BackIcon size={20} color={colors.textMuted} />
               </Pressable>
@@ -310,6 +381,18 @@ const styles = StyleSheet.create({
 
   sectionTitle: { color: colors.text, fontSize: font.sizeMD, fontWeight: '800', marginTop: spacing.lg },
   description: { color: colors.textMuted, fontSize: font.sizeMD, lineHeight: 24, marginTop: spacing.sm },
+
+  reviewsHead: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  reviewsTitle: { color: colors.text, fontSize: font.sizeMD, fontWeight: '800' },
+  reviewsLink: { color: colors.accent, fontSize: font.sizeSM, fontWeight: '700' },
+  reviewsSummary: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, marginTop: spacing.sm },
+  reviewsSummaryText: { color: colors.textMuted, fontSize: font.sizeSM },
+  reviewBtn: {
+    marginTop: spacing.md, borderWidth: 1.5, borderColor: colors.accent,
+    borderRadius: radius.pill, paddingVertical: 14, alignItems: 'center',
+  },
+  reviewBtnText: { color: colors.accent, fontSize: font.sizeMD, fontWeight: '800' },
+  reviewDone: { color: colors.textMuted, fontSize: font.sizeSM, marginTop: spacing.md },
 
   divider: { height: 1, backgroundColor: colors.border, marginVertical: spacing.lg },
   seller: { flexDirection: 'row', alignItems: 'center', gap: spacing.md },

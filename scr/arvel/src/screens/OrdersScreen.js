@@ -3,11 +3,13 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { View, Text, StyleSheet, Pressable, ScrollView, Modal, ActivityIndicator, Image } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useFocusEffect } from '@react-navigation/native';
 import { colors, spacing, radius, font } from '../theme';
 import { BackIcon, TeeIcon, CloseIcon } from '../components/Icons';
 import { useAuth } from '../context/AuthContext';
 import { useMoney } from '../context/AppConfigContext';
 import { listMyPurchases, listMySales } from '../api/purchases';
+import { listMyReviews } from '../api/reviews';
 import { resolveMediaUrl } from '../utils/media';
 import { formatTime } from '../utils/chatFormat';
 
@@ -35,6 +37,7 @@ export default function OrdersScreen({ navigation }) {
       const res = await (isSeller ? listMySales({ limit: 50 }) : listMyPurchases({ limit: 50 }));
       setDeals((res?.data ?? []).map((c) => ({
         id: c.id,
+        productId: c.product?.id,
         title: [c.product?.brand?.name, c.product?.title].filter(Boolean).join(' '),
         priceMinor: c.product?.price_minor,
         date: formatTime(c.confirmed_at),
@@ -48,6 +51,26 @@ export default function OrdersScreen({ navigation }) {
   }, [isSeller]);
 
   useEffect(() => { load(); }, [load]);
+
+  // Покупателю — какие покупки он уже оценил, чтобы не предлагать отзыв
+  // повторно (бэкенд принимает один отзыв на товар). Перечитываем при
+  // возвращении на экран: человек мог только что отправить отзыв.
+  const [reviewedIds, setReviewedIds] = useState(() => new Set());
+  useFocusEffect(useCallback(() => {
+    if (isSeller) return undefined;
+    let cancelled = false;
+    listMyReviews({ limit: 100 })
+      .then((res) => {
+        if (!cancelled) setReviewedIds(new Set((res?.data ?? []).map((r) => r.product_id)));
+      })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, [isSeller]));
+
+  const openWriteReview = (deal) => {
+    setSelected(null);
+    navigation.navigate('WriteReview', { productId: deal.productId, title: deal.title, thumbnail: deal.thumbnail });
+  };
 
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
@@ -118,6 +141,15 @@ export default function OrdersScreen({ navigation }) {
                   <Text style={styles.modalTitle}>{selected.title}</Text>
                   <Text style={styles.modalRow}>{rowLabel} · {selected.date}</Text>
                   <Text style={styles.modalPrice}>{money.formatMinor(selected.priceMinor)}</Text>
+                  {!isSeller && !!selected.productId && (
+                    reviewedIds.has(selected.productId) ? (
+                      <Text style={styles.reviewDone}>Вы уже оставили отзыв на эту покупку</Text>
+                    ) : (
+                      <Pressable style={styles.reviewBtn} onPress={() => openWriteReview(selected)}>
+                        <Text style={styles.reviewBtnText}>Оставить отзыв</Text>
+                      </Pressable>
+                    )
+                  )}
                   <Text style={styles.modalNote}>
                     Это запись из истории сделок. Подробности переписки и статус проверки подлинности
                     появятся здесь, когда сделки будут вестись через ARVELL.
@@ -134,6 +166,12 @@ export default function OrdersScreen({ navigation }) {
 
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.bg },
+  reviewBtn: {
+    marginTop: spacing.md, backgroundColor: colors.accent,
+    borderRadius: radius.pill, paddingVertical: 14, alignItems: 'center',
+  },
+  reviewBtnText: { color: colors.accentText, fontSize: font.sizeMD, fontWeight: '800' },
+  reviewDone: { color: colors.success, fontSize: font.sizeSM, fontWeight: '600', marginTop: spacing.md },
   header: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
     paddingHorizontal: spacing.md, paddingVertical: spacing.md,

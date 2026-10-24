@@ -11,6 +11,7 @@ import {
 } from '../components/Icons';
 import KeyboardAware from '../components/KeyboardAware';
 import ZoomableImage from '../components/ZoomableImage';
+import ConfirmDialog from '../components/ConfirmDialog';
 import { useAppConfig, useMoney, labelFor } from '../context/AppConfigContext';
 import { useAuth } from '../context/AuthContext';
 import { useChatUnread } from '../context/ChatUnreadContext';
@@ -18,6 +19,7 @@ import {
   openConversation, getConversation, listMessages, sendMessage, markConversationRead,
 } from '../api/chat';
 import { uploadImage } from '../api/media';
+import { listMySales, confirmSale } from '../api/purchases';
 import { prepareForUpload } from '../utils/imageUpload';
 import { resolveMediaUrl } from '../utils/media';
 import { formatTime, isImageBody } from '../utils/chatFormat';
@@ -68,18 +70,25 @@ export default function ConversationScreen({ navigation, route }) {
   const { user } = useAuth();
   const { refresh: refreshUnread } = useChatUnread();
   const feedRef = useRef(null);
+  // Сама переписка (покупатель, продавец, товар) — нужна продавцу, чтобы
+  // подтвердить продажу именно этому покупателю именно этого товара.
+  const [conv, setConv] = useState(null);
 
   const load = useCallback(async () => {
     setLoadError(null);
     try {
       let id = route?.params?.conversationId || null;
       if (id) {
-        getConversation(id).then((conv) => setClosed(conv?.status === 'closed')).catch(() => {});
+        getConversation(id).then((c) => {
+          setConv(c);
+          setClosed(c?.status === 'closed');
+        }).catch(() => {});
       } else if (product?.id) {
-        const conv = await openConversation(product.id);
-        id = conv.id;
-        setClosed(conv?.status === 'closed');
-        if (conv.seller?.profile_pic_url) setAvatar(resolveMediaUrl(conv.seller.profile_pic_url));
+        const opened = await openConversation(product.id);
+        id = opened.id;
+        setConv(opened);
+        setClosed(opened?.status === 'closed');
+        if (opened.seller?.profile_pic_url) setAvatar(resolveMediaUrl(opened.seller.profile_pic_url));
       }
       if (!id) {
         // Переписка без товара (например поддержка) бэкендом не поддержана:
@@ -99,6 +108,49 @@ export default function ConversationScreen({ navigation, route }) {
   }, [route?.params?.conversationId, product?.id, refreshUnread]);
 
   useEffect(() => { load(); }, [load]);
+
+  // --- Подтверждение продажи (только продавец) ---
+  // Без него покупатель не может оставить отзыв: бэкенд открывает отзыв
+  // только по подтверждённой продавцом покупке.
+  const buyerId = conv?.buyer?.id;
+  const convProductId = conv?.product?.id;
+  const isSellerSide = user?.role === 'seller' && !!buyerId && buyerId !== user?.id;
+  const [saleConfirmed, setSaleConfirmed] = useState(false);
+  const [confirmVisible, setConfirmVisible] = useState(false);
+  const [confirming, setConfirming] = useState(false);
+  useEffect(() => {
+    if (!isSellerSide || !convProductId) return undefined;
+    let cancelled = false;
+    listMySales({ limit: 100 })
+      .then((res) => {
+        if (cancelled) return;
+        const found = (res?.data ?? []).some((c) => c.buyer?.id === buyerId && c.product?.id === convProductId);
+        setSaleConfirmed(found);
+      })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, [isSellerSide, buyerId, convProductId]);
+
+  const doConfirmSale = async () => {
+    setConfirmVisible(false);
+    setConfirming(true);
+    try {
+      await confirmSale({ buyerId, productId: convProductId });
+      setSaleConfirmed(true);
+    } catch (e) {
+      const msg = e?.status === 403
+        ? 'Подтвердить продажу может только владелец товара.'
+        : e?.status === 409
+          ? 'Эта продажа уже подтверждена.'
+          : (e?.message || 'Не удалось подтвердить продажу. Попробуйте ещё раз.');
+      if (e?.status === 409) setSaleConfirmed(true);
+      Alert.alert('Продажа не подтверждена', msg);
+    } finally {
+      setConfirming(false);
+    }
+  };
+  const convProductTitle = [conv?.product?.brand?.name, conv?.product?.title].filter(Boolean).join(' ');
+  const buyerName = conv?.buyer?.display_name || 'Покупатель';
   const [viewerImage, setViewerImage] = useState(null);
   // Фото, выбранное, но ещё не отправленное — показываем превью над полем
   // ввода, чтобы можно было добавить подпись перед отправкой (как в
@@ -205,6 +257,29 @@ export default function ConversationScreen({ navigation, route }) {
           </Pressable>
         )}
       </View>
+
+      {isSellerSide && !!convProductId && (
+        <View style={styles.saleBar}>
+          {saleConfirmed ? (
+            <Text style={styles.saleDone}>
+              ✓ Продажа подтверждена. Покупатель может оставить отзыв.
+            </Text>
+          ) : (
+            <>
+              <Text style={styles.saleText} numberOfLines={2}>
+                Товар продан этому покупателю? Подтвердите продажу — тогда он сможет оставить отзыв.
+              </Text>
+              <Pressable
+                style={[styles.saleBtn, confirming && { opacity: 0.6 }]}
+                disabled={confirming}
+                onPress={() => setConfirmVisible(true)}
+              >
+                <Text style={styles.saleBtnText}>{confirming ? '…' : 'Подтвердить продажу'}</Text>
+              </Pressable>
+            </>
+          )}
+        </View>
+      )}
 
       {/* KeyboardAware поднимает контент над клавиатурой на обеих платформах
           (на Android — через слушатели клавиатуры, т.к. включён edge-to-edge) */}
@@ -316,6 +391,17 @@ export default function ConversationScreen({ navigation, route }) {
         </SafeAreaView>
       </KeyboardAware>
 
+      <ConfirmDialog
+        visible={confirmVisible}
+        title="Подтвердить продажу?"
+        message={`${buyerName} купил(а) у вас${convProductTitle ? ` «${convProductTitle}»` : ' этот товар'}. После подтверждения покупатель сможет оставить отзыв. Отменить подтверждение нельзя.`}
+        confirmText="Подтвердить"
+        cancelText="Отмена"
+        confirmTone="accent"
+        onCancel={() => setConfirmVisible(false)}
+        onConfirm={doConfirmSale}
+      />
+
       {/* Просмотр отправленной фотографии на весь экран, с приближением */}
       <Modal
         visible={!!viewerImage}
@@ -350,6 +436,18 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.md, paddingBottom: spacing.md,
     borderBottomWidth: 1, borderBottomColor: colors.border,
   },
+  saleBar: {
+    flexDirection: 'row', alignItems: 'center', gap: spacing.sm,
+    paddingHorizontal: spacing.md, paddingVertical: spacing.sm,
+    backgroundColor: colors.surface, borderBottomWidth: 1, borderBottomColor: colors.border,
+  },
+  saleText: { flex: 1, color: colors.textMuted, fontSize: font.sizeXS, lineHeight: 16 },
+  saleBtn: {
+    backgroundColor: colors.accent, borderRadius: radius.pill,
+    paddingHorizontal: spacing.md, paddingVertical: 8,
+  },
+  saleBtnText: { color: colors.accentText, fontSize: font.sizeSM, fontWeight: '800' },
+  saleDone: { flex: 1, color: colors.success, fontSize: font.sizeSM, fontWeight: '600' },
   avatar: { width: 44, height: 44, borderRadius: 22, backgroundColor: colors.surfaceAlt, alignItems: 'center', justifyContent: 'center' },
   avatarText: { color: colors.text, fontSize: font.sizeMD, fontWeight: '700' },
   avatarImage: { width: 44, height: 44, borderRadius: 22 },
