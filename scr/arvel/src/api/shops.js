@@ -11,3 +11,9 @@ export function getMyShop() {
 export function updateMyShop(patch) {
   return request('/me/shop', { method: 'PATCH', body: patch });
 }
+
+// Публичный профиль магазина: название, описание, фото, рейтинг и число
+// отзывов и объявлений.
+export function getShop(shopId) {
+  return request(`/shops/${shopId}`, { auth: false });
+}

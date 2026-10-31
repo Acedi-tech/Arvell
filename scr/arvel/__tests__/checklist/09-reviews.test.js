@@ -20,6 +20,7 @@ jest.mock('../../src/api/purchases', () => ({
   listMySales: jest.fn(),
   confirmSale: jest.fn(),
 }));
+jest.mock('../../src/api/shops', () => ({ getShop: jest.fn(async () => null), getMyShop: jest.fn(), updateMyShop: jest.fn() }));
 jest.mock('../../src/api/products', () => ({
   listProducts: jest.fn(async () => ({ data: [], page: { has_more: false } })),
   getProduct: jest.fn(),
@@ -37,6 +38,7 @@ const { createNavigation } = require('../helpers/navMock');
 const { setAuth, resetContexts } = require('../helpers/mockContexts');
 const reviewsApi = require('../../src/api/reviews');
 const purchasesApi = require('../../src/api/purchases');
+const shopsApi = require('../../src/api/shops');
 const { getProduct } = require('../../src/api/products');
 const chatApi = require('../../src/api/chat');
 
@@ -146,7 +148,7 @@ describe('ОТЗЫВЫ', () => {
     it('Отзывы о товаре видны, «Все» -> Reviews', async () => {
       render(<ProductScreen navigation={navigation} route={route} />);
       expect(await screen.findByText('Всё как в описании')).toBeTruthy();
-      expect(screen.getByText('5.0 · 1 отзыв')).toBeTruthy();
+      expect(screen.getByText('· 1 отзыв')).toBeTruthy();
       fireEvent.press(screen.getByText('Все'));
       expect(navigation.navigate).toHaveBeenCalledWith('Reviews', expect.objectContaining({ productId: 'p1' }));
       expect(screen.queryByText('Оставить отзыв')).toBeNull();
@@ -164,6 +166,22 @@ describe('ОТЗЫВЫ', () => {
       render(<ProductScreen navigation={navigation} route={route} />);
       expect(await screen.findByText('Вы уже оставили отзыв на этот товар')).toBeTruthy();
     });
+  });
+
+  it('Магазин: данные с сервера, последние отзывы и «Все отзывы»', async () => {
+    shopsApi.getShop.mockResolvedValueOnce({
+      id: 'shop1', shop_name: 'Alex Shop', description: 'Кроссовки и худи, встречи у м. Тверская',
+      rating: 4.5, rating_count: 2, product_count: 3,
+    });
+    render(<ShopScreen navigation={navigation} route={{ params: { shopId: 'shop1' } }} />);
+    expect(await screen.findByText('Кроссовки и худи, встречи у м. Тверская')).toBeTruthy();
+    expect(screen.getByText('4.5 · 2 отзыва')).toBeTruthy();
+    expect(screen.getByText('3 объявления')).toBeTruthy();
+    expect(screen.getByText('Проверенный продавец', { exact: false })).toBeTruthy();
+    expect(await screen.findByText('Всё как в описании')).toBeTruthy();
+    expect(reviewsApi.listShopReviews).toHaveBeenCalledWith('shop1', { limit: 3 });
+    fireEvent.press(screen.getByText('Все отзывы'));
+    expect(navigation.navigate).toHaveBeenCalledWith('Reviews', { shopId: 'shop1', title: 'Alex Shop', rating: 4.5, ratingCount: 2 });
   });
 
   it('Магазин: строка рейтинга -> Reviews', async () => {

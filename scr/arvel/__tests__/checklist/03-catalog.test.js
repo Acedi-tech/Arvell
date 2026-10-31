@@ -11,9 +11,15 @@ jest.mock('../../src/context/AuthContext', () => require('../helpers/mockContext
 jest.mock('../../src/context/AppConfigContext', () => require('../helpers/mockContexts').configModule);
 jest.mock('../../src/context/FavoritesContext', () => require('../helpers/mockContexts').favoritesModule);
 jest.mock('../../src/context/ProductsContext', () => require('../helpers/mockContexts').productsModule);
+jest.mock('../../src/api/shops', () => ({ getShop: jest.fn(async () => null), getMyShop: jest.fn(), updateMyShop: jest.fn() }));
+jest.mock('../../src/api/reviews', () => ({
+  listProductReviews: jest.fn(async () => ({ data: [], page: { has_more: false } })),
+  listShopReviews: jest.fn(async () => ({ data: [], page: { has_more: false } })),
+}));
 jest.mock('../../src/api/products', () => ({
   listProducts: jest.fn(async () => ({ data: [], page: { has_more: false } })),
   getProduct: jest.fn(),
+  setProductStatus: jest.fn(async (id, status) => ({ id, status })),
 }));
 jest.mock('../../src/api/catalog', () => ({
   listCategories: jest.fn(async () => ({ data: [] })),
@@ -22,7 +28,7 @@ jest.mock('../../src/api/catalog', () => ({
 
 const { createNavigation } = require('../helpers/navMock');
 const { setAuth, setFavorites, setProducts, setConfig, resetContexts } = require('../helpers/mockContexts');
-const { listProducts, getProduct } = require('../../src/api/products');
+const { listProducts, getProduct, setProductStatus } = require('../../src/api/products');
 const { listCategories, listBrands } = require('../../src/api/catalog');
 const { forEachRole } = require('../helpers/roles');
 
@@ -39,6 +45,7 @@ const puma = { id: 'p3', title: 'Suede', brand: { id: 'b3', name: 'Puma' }, pric
 
 let navigation;
 beforeEach(async () => {
+  setProductStatus.mockClear();
   resetContexts();
   navigation = createNavigation();
   await AsyncStorage.clear();
@@ -443,11 +450,10 @@ forEachRole(({ t }) => {
 
     it('Product: данные товара', async () => {
       render(<ProductScreen navigation={navigation} route={route} />);
-      expect(await screen.findByText('Air Max 90')).toBeTruthy();
+      expect(await screen.findByText('Nike Air Max 90')).toBeTruthy();
       expect(screen.getByText('Nike')).toBeTruthy();
       expect(screen.getByText('8 900 €')).toBeTruthy();
-      expect(screen.getByText('42')).toBeTruthy();
-      expect(screen.getByText('Отличное')).toBeTruthy();
+      expect(screen.getByText('42 · Отличное')).toBeTruthy();
       expect(getProduct).toHaveBeenCalledWith('p1');
     });
 
@@ -461,7 +467,7 @@ forEachRole(({ t }) => {
         ],
       });
       render(<ProductScreen navigation={navigation} route={route} />);
-      await screen.findByText('Air Max 90');
+      await screen.findByText('Nike Air Max 90');
       const BASE = 'http://176.123.162.135:8081';
       const shown = screen.UNSAFE_queryAllByType(Image).map((i) => i.props.source?.uri).filter((u) => u?.includes('/media/files/'));
       expect(shown).toEqual([`${BASE}/media/files/a.jpg`, `${BASE}/media/files/b.jpg`, `${BASE}/media/files/c.jpg`]);
@@ -470,13 +476,13 @@ forEachRole(({ t }) => {
 
     it('Product: одно фото — без счётчика', async () => {
       render(<ProductScreen navigation={navigation} route={route} />);
-      await screen.findByText('Air Max 90');
+      await screen.findByText('Nike Air Max 90');
       expect(screen.queryByText('1 / 1')).toBeNull();
     });
 
     it('Product: кнопка «Назад»', async () => {
       render(<ProductScreen navigation={navigation} route={route} />);
-      await screen.findByText('Air Max 90');
+      await screen.findByText('Nike Air Max 90');
       fireEvent.press(screen.getByLabelText('Назад'));
       expect(navigation.goBack).toHaveBeenCalled();
     });
@@ -492,7 +498,7 @@ forEachRole(({ t }) => {
     it(t('Product: сердечко (лайк/избранное)', 'Product: сердечко'), async () => {
       const fav = setFavorites();
       render(<ProductScreen navigation={navigation} route={route} />);
-      await screen.findByText('Air Max 90');
+      await screen.findByText('Nike Air Max 90');
       fireEvent.press(screen.getByLabelText('В избранное'));
       expect(fav.toggleFavorite).toHaveBeenCalledWith('p1', product);
     });
@@ -501,7 +507,7 @@ forEachRole(({ t }) => {
       setAuth({ isLoggedIn: false, user: null });
       const fav = setFavorites();
       render(<ProductScreen navigation={navigation} route={route} />);
-      await screen.findByText('Air Max 90');
+      await screen.findByText('Nike Air Max 90');
       fireEvent.press(screen.getByLabelText('В избранное'));
       expect(navigation.navigate).toHaveBeenCalledWith('Auth', { reason: 'Войдите, чтобы сохранять в избранное' });
       expect(fav.toggleFavorite).not.toHaveBeenCalled();
@@ -510,7 +516,7 @@ forEachRole(({ t }) => {
     it('Product: кнопка «Поделиться»', async () => {
       const share = jest.spyOn(Share, 'share').mockResolvedValue({ action: 'sharedAction' });
       render(<ProductScreen navigation={navigation} route={route} />);
-      await screen.findByText('Air Max 90');
+      await screen.findByText('Nike Air Max 90');
       fireEvent.press(screen.getByLabelText('Поделиться'));
       // ru-RU разделяет разряды узким неразрывным пробелом — сравниваем через \s.
       expect(share).toHaveBeenCalledWith({
@@ -528,7 +534,7 @@ forEachRole(({ t }) => {
 
     it(t('Product: кнопка «Купить» -> Conversation', 'Product: кнопка «Купить»'), async () => {
       render(<ProductScreen navigation={navigation} route={route} />);
-      await screen.findByText('Air Max 90');
+      await screen.findByText('Nike Air Max 90');
       fireEvent.press(screen.getByText('Купить'));
       expect(navigation.navigate).toHaveBeenCalledWith('Conversation', expect.objectContaining({
         name: 'Alex Shop', rating: 4.8, product, fromBuy: true,
@@ -537,7 +543,7 @@ forEachRole(({ t }) => {
 
     it(t('Product: иконка чата -> Conversation', 'Product: иконка чата'), async () => {
       render(<ProductScreen navigation={navigation} route={route} />);
-      await screen.findByText('Air Max 90');
+      await screen.findByText('Nike Air Max 90');
       fireEvent.press(screen.getByLabelText('Написать продавцу'));
       expect(navigation.navigate).toHaveBeenCalledWith('Conversation', expect.objectContaining({
         name: 'Alex Shop', product, fromBuy: false,
@@ -547,7 +553,7 @@ forEachRole(({ t }) => {
     it('Product: «Купить» у гостя -> окно входа', async () => {
       setAuth({ isLoggedIn: false, user: null });
       render(<ProductScreen navigation={navigation} route={route} />);
-      await screen.findByText('Air Max 90');
+      await screen.findByText('Nike Air Max 90');
       fireEvent.press(screen.getByText('Купить'));
       expect(navigation.navigate).toHaveBeenCalledWith('Auth', { reason: 'Войдите, чтобы связаться с продавцом' });
     });
@@ -558,6 +564,31 @@ forEachRole(({ t }) => {
       expect(await screen.findByText('Это ваше объявление')).toBeTruthy();
       expect(screen.queryByText('Купить')).toBeNull();
       expect(screen.queryByLabelText('Написать продавцу')).toBeNull();
+    });
+
+    it('Product (продавец): «Снять с продажи» и обратно', async () => {
+      setAuth({ user: { id: 'owner-1', name: 'Алекс', role: 'seller' } });
+      render(<ProductScreen navigation={navigation} route={route} />);
+      await screen.findByText('Это ваше объявление');
+      expect(screen.queryByLabelText('В избранное')).toBeNull();
+      fireEvent.press(screen.getByLabelText('Действия с объявлением'));
+      fireEvent.press(screen.getByText('Снять с продажи'));
+      await waitFor(() => expect(setProductStatus).toHaveBeenCalledWith('p1', 'out_of_stock'));
+      expect(await screen.findByText('Снято с продажи')).toBeTruthy();
+      fireEvent.press(screen.getByLabelText('Действия с объявлением'));
+      fireEvent.press(screen.getByText('Вернуть в продажу'));
+      await waitFor(() => expect(setProductStatus).toHaveBeenLastCalledWith('p1', 'active'));
+    });
+
+    it('Product (продавец): «Удалить объявление» -> подтверждение -> назад', async () => {
+      setAuth({ user: { id: 'owner-1', name: 'Алекс', role: 'seller' } });
+      render(<ProductScreen navigation={navigation} route={route} />);
+      await screen.findByText('Это ваше объявление');
+      fireEvent.press(screen.getByLabelText('Действия с объявлением'));
+      fireEvent.press(screen.getByText('Удалить объявление'));
+      fireEvent.press(screen.getByText('Удалить'));
+      await waitFor(() => expect(setProductStatus).toHaveBeenCalledWith('p1', 'archived'));
+      expect(navigation.goBack).toHaveBeenCalled();
     });
 
     it('Shop: кнопка «Назад»', async () => {

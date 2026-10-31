@@ -2,11 +2,12 @@
 // сделок», когда продавец подтвердил продажу (viewer_context.can_review).
 // route.params: { productId, title?, thumbnail? }
 import React, { useState } from 'react';
-import { View, Pressable, Image, ScrollView, StyleSheet } from 'react-native';
+import { View, Image, ScrollView, StyleSheet } from 'react-native';
 import { Text, TextInput } from '../components/AppText';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { colors, spacing, radius, font } from '../theme';
-import { BackIcon, TeeIcon } from '../components/Icons';
+import { colors, spacing, font, type } from '../theme';
+import { TeeIcon } from '../components/Icons';
+import Header from '../components/Header';
 import KeyboardAware from '../components/KeyboardAware';
 import StarRating from '../components/StarRating';
 import PrimaryButton from '../components/PrimaryButton';
@@ -48,13 +49,7 @@ export default function WriteReviewScreen({ navigation, route }) {
 
   return (
     <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
-      <View style={styles.header}>
-        <Pressable hitSlop={10} accessibilityLabel="Назад" onPress={() => navigation.goBack()}>
-          <BackIcon size={26} />
-        </Pressable>
-        <Text style={styles.headerTitle}>Отзыв о покупке</Text>
-        <View style={{ width: 26 }} />
-      </View>
+      <Header title="Отзыв о покупке" onBack={() => navigation.goBack()} />
 
       <KeyboardAware dismissOnTap={false}>
         <ScrollView
@@ -73,13 +68,13 @@ export default function WriteReviewScreen({ navigation, route }) {
             </View>
           )}
 
-          <Text style={styles.label}>Оцените покупку</Text>
+          <Text style={styles.rateTitle}>Оцените покупку</Text>
           <View style={styles.stars}>
             <StarRating value={rating} size={40} gap={spacing.sm} onChange={setRating} />
-            <Text style={styles.ratingLabel}>{rating ? RATING_LABELS[rating] : 'Нажмите на звезду'}</Text>
+            <Text style={[styles.ratingLabel, !!rating && styles.ratingLabelOn]}>{rating ? RATING_LABELS[rating] : 'Нажмите на звезду'}</Text>
           </View>
 
-          <Text style={[styles.label, { marginTop: spacing.xl }]}>Комментарий</Text>
+          <Text style={styles.label}>Комментарий</Text>
           <TextInput
             style={styles.input}
             placeholder="Расскажите, как прошла сделка и соответствовал ли товар описанию"
@@ -90,8 +85,10 @@ export default function WriteReviewScreen({ navigation, route }) {
             onChangeText={setComment}
             textAlignVertical="top"
           />
-          <Text style={styles.counter}>{comment.length} / {MAX_COMMENT}</Text>
-          <Text style={styles.note}>Комментарий необязателен. Отзыв увидят все пользователи ARVELL.</Text>
+          <View style={styles.counterRow}>
+            <Text style={styles.note}>Комментарий необязателен. Отзыв увидят все пользователи ARVELL</Text>
+            <Text style={styles.counter}>{comment.length} / {MAX_COMMENT}</Text>
+          </View>
 
           {!!error && <Text style={styles.error}>{error}</Text>}
         </ScrollView>
@@ -118,32 +115,30 @@ export default function WriteReviewScreen({ navigation, route }) {
 
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.bg },
-  header: {
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-    paddingHorizontal: spacing.lg, paddingVertical: spacing.md,
-  },
-  headerTitle: { color: colors.text, fontSize: font.sizeLG, fontWeight: '800' },
-  content: { padding: spacing.lg, paddingBottom: spacing.xl },
+  content: { padding: spacing.md, paddingBottom: spacing.lg },
   product: {
-    flexDirection: 'row', alignItems: 'center', gap: spacing.md,
-    backgroundColor: colors.surface, borderRadius: radius.md, padding: spacing.md,
-    marginBottom: spacing.xl,
+    flexDirection: 'row', alignItems: 'center', gap: 12,
+    backgroundColor: colors.surface, padding: 10,
+    marginBottom: 26,
   },
   thumb: {
-    width: 56, height: 56, borderRadius: radius.sm, backgroundColor: colors.surfaceAlt,
+    width: 56, height: 56, backgroundColor: colors.surfaceAlt,
     alignItems: 'center', justifyContent: 'center', overflow: 'hidden',
   },
   thumbImage: { width: 56, height: 56 },
-  productTitle: { flex: 1, color: colors.text, fontSize: font.sizeMD, fontWeight: '700' },
-  label: { color: colors.text, fontSize: font.sizeMD, fontWeight: '800', marginBottom: spacing.md },
-  stars: { alignItems: 'center', gap: spacing.sm },
-  ratingLabel: { color: colors.textMuted, fontSize: font.sizeSM, fontWeight: '600' },
+  productTitle: { flex: 1, color: colors.text, fontSize: 15, fontWeight: '700' },
+  rateTitle: { color: colors.text, fontSize: 17, fontWeight: '800', textAlign: 'center', marginBottom: 14 },
+  stars: { alignItems: 'center', gap: 10, marginBottom: 28 },
+  ratingLabel: { color: colors.textMuted, fontSize: 14 },
+  ratingLabelOn: { color: colors.text, fontWeight: '600' },
+  label: { ...type.mono, fontSize: 10.5, color: colors.textMuted, marginBottom: spacing.sm },
   input: {
-    minHeight: 120, backgroundColor: colors.surface, borderRadius: radius.md,
-    padding: spacing.md, color: colors.text, fontSize: font.sizeMD, lineHeight: 22,
+    minHeight: 120, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border,
+    padding: 14, color: colors.text, fontSize: 15, lineHeight: 21,
   },
-  counter: { color: colors.textFaint, fontSize: font.sizeXS, textAlign: 'right', marginTop: spacing.xs },
-  note: { color: colors.textMuted, fontSize: font.sizeSM, marginTop: spacing.sm },
-  error: { color: colors.danger, fontSize: font.sizeSM, marginTop: spacing.md },
-  footer: { paddingHorizontal: spacing.lg, paddingTop: spacing.sm, paddingBottom: spacing.md },
+  counterRow: { flexDirection: 'row', justifyContent: 'space-between', gap: 10, marginTop: spacing.sm },
+  counter: { color: colors.textMuted, fontSize: 12 },
+  note: { flex: 1, color: colors.textMuted, fontSize: 12, lineHeight: 17 },
+  error: { color: colors.danger, fontSize: 13, marginTop: 14 },
+  footer: { paddingHorizontal: spacing.md, paddingTop: 10, paddingBottom: spacing.md, borderTopWidth: 1, borderTopColor: colors.border },
 });

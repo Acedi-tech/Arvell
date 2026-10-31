@@ -98,6 +98,13 @@ export function MyListingsProvider({ children }) {
     refreshFeed();
   }, [refreshFeed]);
 
+  // Вернуть снятый с продажи товар обратно в ленту.
+  const markActive = useCallback(async (id) => {
+    const updated = await setProductStatus(id, 'active');
+    setItems((prev) => prev.map((p) => (p.id === id ? { ...p, status: updated?.status ?? 'active' } : p)));
+    refreshFeed();
+  }, [refreshFeed]);
+
   // Удаление — это архивирование: по спеке товар скрывается из каталога,
   // но остаётся в истории.
   const archive = useCallback(async (id) => {
@@ -107,8 +114,8 @@ export function MyListingsProvider({ children }) {
   }, [refreshFeed]);
 
   const value = useMemo(
-    () => ({ items, loading, error, refresh, reloadAfterChange, markSold, archive }),
-    [items, loading, error, refresh, reloadAfterChange, markSold, archive]
+    () => ({ items, loading, error, refresh, reloadAfterChange, markSold, markActive, archive }),
+    [items, loading, error, refresh, reloadAfterChange, markSold, markActive, archive]
   );
 
   return (

@@ -2,11 +2,11 @@
 // route.params: { shopId } или { productId }, плюс title, rating, ratingCount
 // для шапки — чтобы она не ждала сети.
 import React, { useCallback, useEffect, useState } from 'react';
-import { View, FlatList, Pressable, ActivityIndicator, StyleSheet } from 'react-native';
+import { View, FlatList, ActivityIndicator, StyleSheet } from 'react-native';
 import { Text } from '../components/AppText';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { colors, spacing, font } from '../theme';
-import { BackIcon } from '../components/Icons';
+import { colors, spacing, font, type } from '../theme';
+import Header from '../components/Header';
 import ReviewItem from '../components/ReviewItem';
 import StarRating from '../components/StarRating';
 import { listProductReviews, listShopReviews } from '../api/reviews';
@@ -63,15 +63,7 @@ export default function ReviewsScreen({ navigation, route }) {
 
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
-      <View style={styles.header}>
-        <Pressable hitSlop={10} accessibilityLabel="Назад" onPress={() => navigation.goBack()}>
-          <BackIcon size={26} />
-        </Pressable>
-        <View style={{ flex: 1 }}>
-          <Text style={styles.headerTitle} numberOfLines={1}>Отзывы</Text>
-          {!!title && <Text style={styles.headerSub} numberOfLines={1}>{title}</Text>}
-        </View>
-      </View>
+      <Header title="Отзывы" subtitle={title} onBack={() => navigation.goBack()} />
 
       <FlatList
         data={items}
@@ -84,7 +76,7 @@ export default function ReviewsScreen({ navigation, route }) {
           <View style={styles.summary}>
             <Text style={styles.summaryValue}>{rating.toFixed(1)}</Text>
             <View>
-              <StarRating value={rating} size={20} />
+              <StarRating value={rating} size={16} gap={3} />
               <Text style={styles.summaryCount}>{reviewsCount(ratingCount)}</Text>
             </View>
           </View>
@@ -110,20 +102,13 @@ export default function ReviewsScreen({ navigation, route }) {
 
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.bg },
-  header: {
-    flexDirection: 'row', alignItems: 'center', gap: spacing.md,
-    paddingHorizontal: spacing.md, paddingVertical: spacing.md,
-    borderBottomWidth: 1, borderBottomColor: colors.border,
-  },
-  headerTitle: { color: colors.text, fontSize: font.sizeLG, fontWeight: '800' },
-  headerSub: { color: colors.textMuted, fontSize: font.sizeSM, marginTop: 2 },
-  list: { paddingHorizontal: spacing.lg, paddingBottom: spacing.xl },
+  list: { paddingHorizontal: spacing.md, paddingTop: 18, paddingBottom: spacing.xl },
   summary: {
     flexDirection: 'row', alignItems: 'center', gap: spacing.md,
-    paddingVertical: spacing.lg, borderBottomWidth: 1, borderBottomColor: colors.border,
+    paddingBottom: 18, borderBottomWidth: 1, borderBottomColor: colors.border,
   },
-  summaryValue: { color: colors.text, fontSize: font.sizeXXL, fontWeight: '800' },
-  summaryCount: { color: colors.textMuted, fontSize: font.sizeSM, marginTop: 4 },
+  summaryValue: { ...type.display, color: colors.accent, fontSize: 44, lineHeight: 48, letterSpacing: -1 },
+  summaryCount: { color: colors.textMuted, fontSize: 13, marginTop: 6 },
   empty: { alignItems: 'center', marginTop: spacing.xl, paddingHorizontal: spacing.lg },
   emptyTitle: { color: colors.text, fontSize: font.sizeMD, fontWeight: '700', textAlign: 'center' },
   emptySub: { color: colors.textMuted, fontSize: font.sizeSM, marginTop: spacing.sm, textAlign: 'center' },

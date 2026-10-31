@@ -63,6 +63,7 @@ function defaultMyListings() {
     refresh: jest.fn(async () => {}),
     reloadAfterChange: jest.fn(),
     markSold: jest.fn(async () => {}),
+    markActive: jest.fn(async () => {}),
     archive: jest.fn(async () => {}),
   };
 }
