@@ -128,9 +128,18 @@ describe('АДМИН', () => {
       // Кнопка есть только у активного инвайта.
       expect(screen.getAllByText('Отозвать')).toHaveLength(1);
       fireEvent.press(screen.getByText('Отозвать'));
+      expect(screen.getByText('Отозвать инвайт?')).toBeTruthy();
+      fireEvent.press(screen.getAllByText('Отозвать').pop());
       await waitFor(() => expect(admin.revokeSellerInvite).toHaveBeenCalledWith('i1'));
       await waitFor(() => expect(screen.queryByText('Отозвать')).toBeNull());
       expect(screen.getAllByText('Отозван')).toHaveLength(2);
+    });
+
+    it('«Поделиться» отправляет код приглашения', async () => {
+      const share = jest.spyOn(require('react-native').Share, 'share').mockResolvedValue({});
+      await renderPanel();
+      fireEvent.press(screen.getAllByText('Поделиться')[0]);
+      expect(share).toHaveBeenCalledWith({ message: expect.stringContaining('TOKEN-i1') });
     });
 
     it('Бейджи: Активен / Использован / Истёк / Отозван', async () => {
@@ -162,6 +171,8 @@ describe('АДМИН', () => {
     it('Кнопка «Забанить» -> статус меняется', async () => {
       await openUsers();
       fireEvent.press(screen.getByText('Забанить'));
+      expect(screen.getByText('Забанить пользователя?')).toBeTruthy();
+      fireEvent.press(screen.getAllByText('Забанить').pop());
       await waitFor(() => expect(admin.banUser).toHaveBeenCalledWith('u1'));
       await waitFor(() => expect(screen.queryByText('Забанить')).toBeNull());
       expect(screen.getAllByText('Разбанить')).toHaveLength(2);
@@ -170,6 +181,7 @@ describe('АДМИН', () => {
     it('Кнопка «Разбанить» -> снимает бан', async () => {
       await openUsers();
       fireEvent.press(screen.getByText('Разбанить'));
+      fireEvent.press(screen.getAllByText('Разбанить').pop());
       await waitFor(() => expect(admin.unbanUser).toHaveBeenCalledWith('u2'));
       await waitFor(() => expect(screen.queryByText('Разбанить')).toBeNull());
       expect(screen.getAllByText('Забанить')).toHaveLength(2);
@@ -179,6 +191,7 @@ describe('АДМИН', () => {
       admin.banUser.mockRejectedValueOnce(new Error('Сервер недоступен'));
       await openUsers();
       fireEvent.press(screen.getByText('Забанить'));
+      fireEvent.press(screen.getAllByText('Забанить').pop());
       await waitFor(() => expect(Alert.alert).toHaveBeenCalledWith('Не удалось изменить статус', 'Сервер недоступен'));
       expect(screen.getByText('Забанить')).toBeTruthy(); // статус не изменился
     });
@@ -247,6 +260,7 @@ describe('АДМИН', () => {
       await renderPanel();
       fireEvent.press(screen.getByText('Пользователи'));
       fireEvent.press(await screen.findByText('Забанить'));
+      fireEvent.press(screen.getAllByText('Забанить').pop());
       await waitFor(() => expect(Alert.alert).toHaveBeenCalledWith('Не удалось изменить статус', 'Недостаточно прав'));
       expect(screen.getByText('Забанить')).toBeTruthy();
     });

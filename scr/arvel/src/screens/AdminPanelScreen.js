@@ -1,9 +1,12 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { View, StyleSheet, Pressable, ScrollView, Alert, ActivityIndicator } from 'react-native';
+import { View, StyleSheet, Pressable, ScrollView, Alert, ActivityIndicator, Share } from 'react-native';
 import { Text } from '../components/AppText';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { colors, spacing, radius, font } from '../theme';
-import { BackIcon } from '../components/Icons';
+import { colors, spacing, font, type } from '../theme';
+import Header from '../components/Header';
+import Avatar from '../components/Avatar';
+import Button from '../components/Button';
+import ConfirmDialog from '../components/ConfirmDialog';
 import { useAuth } from '../context/AuthContext';
 import {
   listSellerInvites, createSellerInvite, revokeSellerInvite,
@@ -44,9 +47,12 @@ function InviteBadge({ status }) {
   );
 }
 
-function InviteRow({ invite, onRevoke }) {
+function InviteRow({ invite, onRevoke, last }) {
+  const share = () => Share.share({
+    message: `Код приглашения продавца ARVELL: ${invite.token}\nВведите его при регистрации, выбрав «Я продавец».`,
+  }).catch(() => {});
   return (
-    <View style={styles.inviteRow}>
+    <View style={[styles.inviteRow, !last && styles.rowBorderBottom]}>
       <View style={styles.inviteHead}>
         <Text style={styles.inviteCode} numberOfLines={1} ellipsizeMode="middle">{invite.token}</Text>
         <InviteBadge status={invite.status} />
@@ -56,25 +62,32 @@ function InviteRow({ invite, onRevoke }) {
         {invite.used_by ? ` · использовал ${shortId(invite.used_by)}` : ''}
       </Text>
       {invite.status === 'created' && (
-        <Pressable style={styles.revokeBtn} onPress={() => onRevoke(invite.id)}>
-          <Text style={styles.revokeText}>Отозвать</Text>
-        </Pressable>
+        <View style={styles.inviteActions}>
+          <Pressable style={styles.shareBtn} onPress={share}>
+            <Text style={styles.shareText}>Поделиться</Text>
+          </Pressable>
+          <Pressable style={styles.revokeBtn} onPress={() => onRevoke(invite.id)}>
+            <Text style={styles.revokeText}>Отозвать</Text>
+          </Pressable>
+        </View>
       )}
     </View>
   );
 }
 
 function UserRow({ user, onToggleBan }) {
-  const initial = user.display_name.trim()[0]?.toUpperCase() || '?';
   const banned = !user.is_active;
   return (
     <View style={styles.userRow}>
-      <View style={styles.userAvatar}>
-        <Text style={styles.userAvatarText}>{initial}</Text>
-      </View>
-      <View style={{ flex: 1 }}>
-        <Text style={styles.userName}>{user.display_name}</Text>
-        <Text style={styles.userSub}>{ROLE_LABEL[user.role] || user.role} · с {formatDate(user.created_at)}</Text>
+      <Avatar name={user.display_name} size={40} />
+      <View style={{ flex: 1, minWidth: 0 }}>
+        <View style={styles.userNameRow}>
+          <Text style={styles.userName} numberOfLines={1}>{user.display_name}</Text>
+          {banned && <View style={styles.bannedBadge}><Text style={styles.bannedText}>Забанен</Text></View>}
+        </View>
+        <Text style={styles.userSub}>
+          {[ROLE_LABEL[user.role] || user.role, user.phone, `с ${formatDate(user.created_at)}`].filter(Boolean).join(' · ')}
+        </Text>
       </View>
       <Pressable
         style={[styles.banBtn, banned && styles.unbanBtn]}
@@ -128,7 +141,10 @@ export default function AdminPanelScreen({ navigation }) {
   useEffect(() => { if (isAdmin) loadInvites(); }, [isAdmin, loadInvites]);
   useEffect(() => { if (isAdmin) loadUsers(); }, [isAdmin, loadUsers]);
 
+  // Отзыв инвайта и бан — только после подтверждения.
+  const [confirm, setConfirm] = useState(null);
   const revokeInvite = (id) => {
+    setConfirm(null);
     revokeSellerInvite(id)
       .then((updated) => setInvites((prev) => prev.map((i) => (i.id === id ? updated : i))))
       .catch((e) => Alert.alert('Не удалось отозвать', e.message || 'Попробуйте ещё раз.'));
@@ -141,6 +157,7 @@ export default function AdminPanelScreen({ navigation }) {
   };
 
   const toggleBan = (id, banned) => {
+    setConfirm(null);
     const action = banned ? unbanUser : banUser;
     action(id)
       .then((updated) => setUsers((prev) => prev.map((u) => (u.id === id ? updated : u))))
@@ -150,13 +167,7 @@ export default function AdminPanelScreen({ navigation }) {
   if (!isAdmin) {
     return (
       <SafeAreaView style={styles.safe} edges={['top']}>
-        <View style={styles.header}>
-          <Pressable hitSlop={10} accessibilityLabel="Назад" onPress={() => navigation.goBack()}>
-            <BackIcon size={24} />
-          </Pressable>
-          <Text style={styles.headerTitle}>Админ-панель</Text>
-          <View style={{ width: 24 }} />
-        </View>
+        <Header title="Админ-панель" onBack={() => navigation.goBack()} />
         <View style={styles.denied}>
           <Text style={styles.deniedText}>У вас нет прав администратора.</Text>
         </View>
@@ -166,11 +177,7 @@ export default function AdminPanelScreen({ navigation }) {
 
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
-      <View style={styles.header}>
-        <Pressable hitSlop={10} accessibilityLabel="Назад" onPress={() => navigation.goBack()}><BackIcon size={26} /></Pressable>
-        <Text style={styles.headerTitle}>Админ-панель</Text>
-        <View style={{ width: 26 }} />
-      </View>
+      <Header title="Админ-панель" onBack={() => navigation.goBack()} border={false} />
 
       <View style={styles.tabs}>
         {TABS.map((t) => (
@@ -178,6 +185,8 @@ export default function AdminPanelScreen({ navigation }) {
             key={t.key}
             style={[styles.tabBtn, tab === t.key && styles.tabBtnActive]}
             onPress={() => setTab(t.key)}
+            accessibilityRole="tab"
+            accessibilityState={{ selected: tab === t.key }}
           >
             <Text style={[styles.tabText, tab === t.key && styles.tabTextActive]}>{t.label}</Text>
           </Pressable>
@@ -187,9 +196,7 @@ export default function AdminPanelScreen({ navigation }) {
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.content}>
         {tab === 'invites' && (
           <>
-            <Pressable style={styles.createBtn} onPress={createInvite}>
-              <Text style={styles.createBtnText}>+ Создать инвайт</Text>
-            </Pressable>
+            <Button title="+ Создать инвайт" onPress={createInvite} style={{ marginBottom: 20 }} />
 
             {invitesLoading ? (
               <ActivityIndicator color={colors.accent} style={{ marginTop: spacing.xl }} />
@@ -198,9 +205,16 @@ export default function AdminPanelScreen({ navigation }) {
             ) : invites.length === 0 ? (
               <Text style={styles.empty}>Инвайтов пока нет</Text>
             ) : (
-              invites.map((invite) => (
-                <InviteRow key={invite.id} invite={invite} onRevoke={revokeInvite} />
-              ))
+              <View style={styles.card}>
+                {invites.map((invite, i) => (
+                  <InviteRow
+                    key={invite.id}
+                    invite={invite}
+                    last={i === invites.length - 1}
+                    onRevoke={(id) => setConfirm({ kind: 'revoke', id })}
+                  />
+                ))}
+              </View>
             )}
           </>
         )}
@@ -213,15 +227,28 @@ export default function AdminPanelScreen({ navigation }) {
           ) : (
             <View style={styles.card}>
               {users.map((user, i) => (
-                <View key={user.id}>
-                  <UserRow user={user} onToggleBan={toggleBan} />
-                  {i < users.length - 1 && <View style={styles.rowBorder} />}
+                <View key={user.id} style={i < users.length - 1 && styles.rowBorderBottom}>
+                  <UserRow user={user} onToggleBan={(id, banned) => setConfirm({ kind: banned ? 'unban' : 'ban', id, name: user.display_name })} />
                 </View>
               ))}
             </View>
           )
         )}
       </ScrollView>
+
+      <ConfirmDialog
+        visible={!!confirm}
+        title={confirm?.kind === 'revoke' ? 'Отозвать инвайт?' : confirm?.kind === 'ban' ? 'Забанить пользователя?' : 'Разбанить пользователя?'}
+        message={confirm?.kind === 'revoke'
+          ? 'Код перестанет работать.'
+          : confirm?.kind === 'ban'
+            ? `${confirm?.name || 'Пользователь'} не сможет пользоваться ARVELL.`
+            : `${confirm?.name || 'Пользователь'} снова сможет пользоваться ARVELL.`}
+        confirmText={confirm?.kind === 'revoke' ? 'Отозвать' : confirm?.kind === 'ban' ? 'Забанить' : 'Разбанить'}
+        confirmTone={confirm?.kind === 'unban' ? 'accent' : 'danger'}
+        onCancel={() => setConfirm(null)}
+        onConfirm={() => (confirm?.kind === 'revoke' ? revokeInvite(confirm.id) : toggleBan(confirm.id, confirm.kind === 'unban'))}
+      />
     </SafeAreaView>
   );
 }
@@ -230,73 +257,49 @@ const styles = StyleSheet.create({
   denied: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: spacing.lg },
   deniedText: { color: colors.textMuted, fontSize: font.sizeMD, textAlign: 'center' },
   safe: { flex: 1, backgroundColor: colors.bg },
-  header: {
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-    paddingHorizontal: spacing.lg, paddingVertical: spacing.md,
-  },
-  headerTitle: { color: colors.accent, fontSize: font.sizeLG, fontWeight: '800' },
 
-  tabs: { flexDirection: 'row', gap: spacing.sm, paddingHorizontal: spacing.lg, marginBottom: spacing.md },
-  tabBtn: {
-    flex: 1, backgroundColor: colors.surface, borderRadius: radius.pill,
-    paddingVertical: 10, alignItems: 'center',
-  },
-  tabBtnActive: { backgroundColor: colors.accent },
-  tabText: { color: colors.text, fontSize: font.sizeSM, fontWeight: '700' },
-  tabTextActive: { color: colors.accentText },
+  tabs: { flexDirection: 'row', borderBottomWidth: 1, borderBottomColor: colors.border, marginBottom: spacing.md },
+  tabBtn: { flex: 1, alignItems: 'center', paddingVertical: 12, borderBottomWidth: 2, borderBottomColor: 'transparent' },
+  tabBtnActive: { borderBottomColor: colors.accent },
+  tabText: { ...type.mono, color: colors.textMuted, fontSize: 12 },
+  tabTextActive: { color: colors.accent },
 
-  content: { paddingHorizontal: spacing.lg, paddingBottom: spacing.xl },
-
-  card: { backgroundColor: colors.surface, borderRadius: radius.md, overflow: 'hidden' },
-  rowBorder: { height: 1, backgroundColor: colors.border },
-
+  content: { paddingHorizontal: spacing.md, paddingBottom: spacing.xl },
+  card: { borderWidth: 1, borderColor: colors.border },
+  rowBorderBottom: { borderBottomWidth: 1, borderBottomColor: colors.border },
   empty: { color: colors.textMuted, textAlign: 'center', marginTop: spacing.xl },
 
-  createBtn: {
-    backgroundColor: colors.accent, borderRadius: radius.pill,
-    paddingVertical: 14, alignItems: 'center', marginBottom: spacing.md,
-  },
-  createBtnText: { color: colors.accentText, fontSize: font.sizeMD, fontWeight: '800' },
-
-  inviteRow: {
-    backgroundColor: colors.surface, borderRadius: radius.md,
-    padding: spacing.md, marginBottom: spacing.sm, gap: 6,
-  },
+  inviteRow: { paddingHorizontal: 14, paddingVertical: 13, gap: 6 },
   inviteHead: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
-  inviteCode: { flex: 1, color: colors.text, fontSize: font.sizeMD, fontWeight: '800' },
-  inviteSub: { color: colors.textMuted, fontSize: font.sizeSM },
+  inviteCode: { ...type.monoMedium, flex: 1, color: colors.text, fontSize: 14, letterSpacing: 1 },
+  inviteSub: { color: colors.textMuted, fontSize: 12.5 },
+  inviteActions: { flexDirection: 'row', gap: spacing.sm, marginTop: 4 },
 
-  badge: { borderRadius: radius.pill, paddingHorizontal: 10, paddingVertical: 4 },
+  badge: { paddingHorizontal: 8, paddingVertical: 3 },
   badge_created: { backgroundColor: colors.accent },
   badge_revoked: { backgroundColor: colors.danger },
-  badge_used: { backgroundColor: colors.chipInactive },
-  badge_expired: { backgroundColor: colors.chipInactive },
-  badgeText: { fontSize: font.sizeXS, fontWeight: '800' },
+  badge_used: { backgroundColor: colors.surfaceAlt },
+  badge_expired: { backgroundColor: colors.surfaceAlt },
+  badgeText: { ...type.monoMedium, fontSize: 10 },
   badgeText_created: { color: colors.accentText },
   badgeText_revoked: { color: colors.text },
   badgeText_used: { color: colors.textMuted },
   badgeText_expired: { color: colors.textMuted },
 
-  revokeBtn: {
-    alignSelf: 'flex-start', borderWidth: 1.5, borderColor: colors.danger,
-    borderRadius: radius.pill, paddingHorizontal: spacing.md, paddingVertical: 7, marginTop: 2,
-  },
-  revokeText: { color: colors.danger, fontSize: font.sizeSM, fontWeight: '700' },
+  shareBtn: { borderWidth: 1, borderColor: colors.text, paddingHorizontal: 12, paddingVertical: 6 },
+  shareText: { ...type.mono, color: colors.text, fontSize: 11 },
+  revokeBtn: { borderWidth: 1, borderColor: colors.danger, paddingHorizontal: 12, paddingVertical: 6 },
+  revokeText: { ...type.mono, color: colors.danger, fontSize: 11 },
 
-  userRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, padding: spacing.md },
-  userAvatar: {
-    width: 40, height: 40, borderRadius: 20, backgroundColor: colors.surfaceAlt,
-    alignItems: 'center', justifyContent: 'center',
-  },
-  userAvatarText: { color: colors.text, fontSize: font.sizeMD, fontWeight: '800' },
-  userName: { color: colors.text, fontSize: font.sizeMD, fontWeight: '700' },
-  userSub: { color: colors.textMuted, fontSize: font.sizeSM, marginTop: 2 },
+  userRow: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: 14, paddingVertical: 12 },
+  userNameRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  userName: { flexShrink: 1, color: colors.text, fontSize: 14.5, fontWeight: '600' },
+  userSub: { color: colors.textMuted, fontSize: 12, marginTop: 2 },
+  bannedBadge: { backgroundColor: colors.danger, paddingHorizontal: 6, paddingVertical: 2 },
+  bannedText: { ...type.monoMedium, color: colors.text, fontSize: 9 },
 
-  banBtn: {
-    borderWidth: 1.5, borderColor: colors.danger, borderRadius: radius.pill,
-    paddingHorizontal: spacing.md, paddingVertical: 8,
-  },
+  banBtn: { borderWidth: 1, borderColor: colors.danger, paddingHorizontal: 12, paddingVertical: 7 },
   unbanBtn: { backgroundColor: colors.accent, borderColor: colors.accent },
-  banText: { color: colors.danger, fontSize: font.sizeSM, fontWeight: '700' },
+  banText: { ...type.mono, color: colors.danger, fontSize: 11 },
   unbanText: { color: colors.accentText },
 });

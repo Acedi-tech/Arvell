@@ -635,7 +635,7 @@ forEachRole(({ t }) => {
 
     it('Пустой список -> «Перейти к товарам»', () => {
       render(<FavoritesScreen navigation={navigation} />);
-      expect(screen.getByText('Здесь пока пусто')).toBeTruthy();
+      expect(screen.getByText('Пока пусто')).toBeTruthy();
       fireEvent.press(screen.getByText('Перейти к товарам'));
       expect(navigation.navigate).toHaveBeenCalledWith('Catalog');
     });
