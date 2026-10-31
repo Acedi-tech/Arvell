@@ -6,6 +6,7 @@ const linking = {
   prefixes: [...new Set([`${APP_SCHEME}://`, SHARE_BASE_URL])],
   config: {
     screens: {
+      DevComponents: 'dev/components',
       Main: {
         screens: {
           Feed: {

@@ -1,27 +1,7 @@
+// Старое имя главной кнопки — теперь это Button в варианте primary.
 import React from 'react';
-import { Pressable, StyleSheet } from 'react-native';
-import { Text } from './AppText';
-import { colors, spacing, radius, font } from '../theme';
+import Button from './Button';
 
-export default function PrimaryButton({ title, onPress, disabled = false }) {
-  return (
-    <Pressable
-      style={[styles.btn, disabled && styles.disabled]}
-      onPress={onPress}
-      disabled={disabled}
-    >
-      <Text style={styles.text}>{title}</Text>
-    </Pressable>
-  );
+export default function PrimaryButton(props) {
+  return <Button variant="primary" {...props} />;
 }
-
-const styles = StyleSheet.create({
-  btn: {
-    backgroundColor: colors.accent,
-    borderRadius: radius.pill,
-    paddingVertical: 18,
-    alignItems: 'center',
-  },
-  disabled: { backgroundColor: colors.accentDim },
-  text: { color: colors.accentText, fontSize: font.sizeMD, fontWeight: '800' },
-});

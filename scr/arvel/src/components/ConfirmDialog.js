@@ -1,7 +1,7 @@
 import React from 'react';
 import { Modal, View, Pressable, StyleSheet } from 'react-native';
 import { Text } from './AppText';
-import { colors, spacing, radius, font } from '../theme';
+import { colors, spacing, font, type } from '../theme';
 
 // Тёмный кастомный диалог подтверждения — вместо системного Alert.alert,
 // который на Android рисуется белым и выбивается из тёмной темы приложения.
@@ -38,25 +38,25 @@ export default function ConfirmDialog({
 
 const styles = StyleSheet.create({
   overlay: {
-    flex: 1, backgroundColor: 'rgba(0,0,0,0.65)',
+    flex: 1, backgroundColor: 'rgba(0,0,0,0.7)',
     alignItems: 'center', justifyContent: 'center', padding: spacing.lg,
   },
   card: {
-    width: '100%', maxWidth: 320,
-    backgroundColor: colors.surface, borderRadius: radius.lg,
+    width: '100%', maxWidth: 340,
+    backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border,
     padding: spacing.lg,
   },
-  title: { color: colors.text, fontSize: font.sizeLG, fontWeight: '800', textAlign: 'center' },
+  title: { ...type.display, color: colors.text, fontSize: font.sizeLG, textAlign: 'center' },
   message: {
-    color: colors.textMuted, fontSize: font.sizeMD, textAlign: 'center',
+    color: colors.textSub, fontSize: font.sizeSM, textAlign: 'center',
     lineHeight: 20, marginTop: spacing.sm,
   },
   actions: { flexDirection: 'row', gap: spacing.sm, marginTop: spacing.lg },
-  btn: { flex: 1, borderRadius: radius.pill, paddingVertical: 14, alignItems: 'center' },
-  cancelBtn: { backgroundColor: colors.surfaceAlt },
-  cancelText: { color: colors.text, fontSize: font.sizeMD, fontWeight: '700' },
+  btn: { flex: 1, height: 48, alignItems: 'center', justifyContent: 'center' },
+  cancelBtn: { borderWidth: 1, borderColor: colors.text },
+  cancelText: { ...type.monoMedium, color: colors.text, fontSize: 12.5 },
   confirmBtn: { backgroundColor: colors.danger },
-  confirmText: { color: colors.text, fontSize: font.sizeMD, fontWeight: '800' },
+  confirmText: { ...type.monoMedium, color: colors.text, fontSize: 12.5 },
   confirmBtnAccent: { backgroundColor: colors.accent },
   confirmTextAccent: { color: colors.accentText },
 });

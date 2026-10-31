@@ -6,6 +6,7 @@ import MainTabs from './MainTabs';
 import ConversationScreen from '../screens/ConversationScreen';
 import ReviewsScreen from '../screens/ReviewsScreen';
 import WriteReviewScreen from '../screens/WriteReviewScreen';
+import DevComponentsScreen from '../screens/DevComponentsScreen';
 import AnimatedSplash from '../components/AnimatedSplash';
 
 const Stack = createNativeStackNavigator();
@@ -57,6 +58,8 @@ export default function RootNavigator() {
           держим их в корне, как чат, чтобы «Назад» всегда вёл туда, откуда пришли. */}
       <Stack.Screen name="Reviews" component={ReviewsScreen} />
       <Stack.Screen name="WriteReview" component={WriteReviewScreen} />
+      {/* Витрина компонентов дизайна — только по ссылке arvell://dev/components */}
+      <Stack.Screen name="DevComponents" component={DevComponentsScreen} />
       <Stack.Screen
         name="Auth"
         component={AuthModal}

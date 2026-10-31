@@ -7,9 +7,9 @@ import { colors } from '../theme';
 // убрать стилями, потому что это часть нативной отрисовки виджета, а не
 // React Native слоя. Здесь вместо этого — плавная анимация цвета трека и
 // сдвига ползунка, без какой-либо ripple-подсветки.
-const WIDTH = 50;
-const HEIGHT = 30;
-const PADDING = 2;
+const WIDTH = 46;
+const HEIGHT = 26;
+const PADDING = 3;
 const THUMB = HEIGHT - PADDING * 2;
 
 export default function Toggle({ value, onValueChange, disabled = false, accessibilityLabel }) {
@@ -25,7 +25,7 @@ export default function Toggle({ value, onValueChange, disabled = false, accessi
 
   const trackColor = progress.interpolate({
     inputRange: [0, 1],
-    outputRange: [colors.surfaceAlt, colors.accent],
+    outputRange: [colors.chipBorder, colors.accent],
   });
 
   const thumbX = progress.interpolate({
@@ -54,14 +54,12 @@ const styles = StyleSheet.create({
   track: {
     width: WIDTH,
     height: HEIGHT,
-    borderRadius: HEIGHT / 2,
     padding: PADDING,
     justifyContent: 'center',
   },
   thumb: {
     width: THUMB,
     height: THUMB,
-    borderRadius: THUMB / 2,
     backgroundColor: '#FFFFFF',
   },
   disabled: { opacity: 0.5 },
