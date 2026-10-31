@@ -54,3 +54,17 @@ export function getProductFacets(filters = {}) {
   });
   return request(`/products/facets${query}`, { auth: false });
 }
+
+// Только для продавца-владельца: правка содержимого (поля необязательны).
+export function updateProduct(productId, body) {
+  return request(`/products/${productId}`, { method: 'PATCH', body });
+}
+
+// Фото товара: url — уже загруженный файл (POST /media/uploads).
+export function addProductImage(productId, { url, position }) {
+  return request(`/products/${productId}/images`, { method: 'POST', body: { url, position } });
+}
+
+export function deleteProductImage(productId, imageId) {
+  return request(`/products/${productId}/images/${imageId}`, { method: 'DELETE' });
+}

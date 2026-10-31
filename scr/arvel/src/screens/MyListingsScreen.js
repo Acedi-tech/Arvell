@@ -1,76 +1,80 @@
-// Экран «Мои объявления» продавца: список его товаров + «Добавить товар».
-// Открывается из плитки статистики в «Профиле».
+// «Мои объявления» продавца (Editorial, design/v3-c.jsx → V3MyListings):
+// сетка своих товаров, в шапке жёлтая «+» — новый товар.
+// Открывается из плитки «Объявления» в «Профиле».
 import React, { useCallback } from 'react';
 import { View, FlatList, StyleSheet, Pressable, ActivityIndicator, Alert } from 'react-native';
-import { Text } from '../components/AppText';
 import { useFocusEffect } from '@react-navigation/native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { colors, spacing, radius, font } from '../theme';
-import { BackIcon } from '../components/Icons';
+import Svg, { Path } from 'react-native-svg';
+import { colors, spacing } from '../theme';
+import Header from '../components/Header';
+import EmptyState from '../components/EmptyState';
 import MyListingCard from '../components/MyListingCard';
+import { GRID_GAP } from '../components/ProductCard';
 import { useMyListings } from '../context/MyListingsContext';
 
+function PlusIcon({ size = 20, color = colors.accentText }) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+      <Path d="M12 5v14M5 12h14" stroke={color} strokeWidth={2} strokeLinecap="round" />
+    </Svg>
+  );
+}
+
 export default function MyListingsScreen({ navigation }) {
-  const { items, loading, error, refresh, markSold, archive } = useMyListings();
+  const { items, loading, error, refresh, markSold, markActive, archive } = useMyListings();
 
   // Список живёт на сервере — при каждом заходе на экран обновляем его,
   // чтобы видеть изменения, сделанные с другого устройства.
   useFocusEffect(useCallback(() => { refresh(); }, [refresh]));
 
   const run = (action, id) => {
-    action(id).catch((e) => {
+    Promise.resolve(action?.(id)).catch((e) => {
       Alert.alert('Не удалось выполнить действие', e?.message || 'Попробуйте ещё раз.');
     });
   };
 
+  const addBtn = (
+    <Pressable style={styles.addBtn} accessibilityRole="button" accessibilityLabel="Добавить товар" onPress={() => navigation.navigate('AddProduct')}>
+      <PlusIcon />
+    </Pressable>
+  );
+
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
-      <View style={styles.header}>
-        <Pressable hitSlop={10} accessibilityLabel="Назад" onPress={() => navigation.goBack()}>
-          <BackIcon size={26} />
-        </Pressable>
-        <Text style={styles.headerTitle}>Мои объявления</Text>
-        <View style={{ width: 26 }} />
-      </View>
-
-      <View style={styles.topBtnWrap}>
-        <Pressable style={styles.addBtn} onPress={() => navigation.navigate('AddProduct')}>
-          <Text style={styles.addBtnText}>+ Добавить товар</Text>
-        </Pressable>
-      </View>
+      <Header title="Мои объявления" onBack={() => navigation.goBack()} right={addBtn} />
 
       <FlatList
         data={items}
         keyExtractor={(item) => item.id}
         numColumns={2}
+        columnWrapperStyle={{ gap: GRID_GAP }}
         contentContainerStyle={styles.list}
         showsVerticalScrollIndicator={false}
         refreshing={loading && items.length > 0}
         onRefresh={refresh}
         ListEmptyComponent={
-          <View style={styles.empty}>
-            {loading ? (
-              <ActivityIndicator color={colors.accent} size="large" />
-            ) : error ? (
-              <>
-                <Text style={styles.emptyTitle}>Не удалось загрузить объявления</Text>
-                <Text style={styles.emptySub}>{error.message}</Text>
-                <Pressable style={styles.retryBtn} onPress={refresh}>
-                  <Text style={styles.retryText}>Повторить</Text>
-                </Pressable>
-              </>
-            ) : (
-              <Text style={styles.emptyTitle}>Объявлений пока нет</Text>
-            )}
-          </View>
+          loading ? (
+            <ActivityIndicator color={colors.accent} size="large" style={{ marginTop: spacing.xl }} />
+          ) : error ? (
+            <EmptyState title="Не удалось загрузить объявления" message={error.message} actionTitle="Повторить" onAction={refresh} />
+          ) : (
+            <EmptyState
+              title="Объявлений пока нет"
+              message="Нажмите «+» вверху, чтобы опубликовать первый товар"
+            />
+          )
         }
         renderItem={({ item }) => (
-          <MyListingCard
-            product={item}
-            onPress={() => navigation.navigate('Product', { id: item.id })}
-            onMarkSold={(id) => run(markSold, id)}
-            onDelete={(id) => run(archive, id)}
-          />
+          <View style={{ zIndex: 1 }}>
+            <MyListingCard
+              product={item}
+              onPress={() => navigation.navigate('Product', { id: item.id })}
+              onMarkSold={(id) => run(markSold, id)}
+              onMarkActive={(id) => run(markActive, id)}
+              onDelete={(id) => run(archive, id)}
+            />
+          </View>
         )}
       />
     </SafeAreaView>
@@ -79,28 +83,6 @@ export default function MyListingsScreen({ navigation }) {
 
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.bg },
-  header: {
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-    paddingHorizontal: spacing.md, paddingVertical: spacing.md,
-  },
-  headerTitle: { color: colors.text, fontSize: font.sizeLG, fontWeight: '800' },
-
-  topBtnWrap: { paddingHorizontal: spacing.md, paddingBottom: spacing.md },
-  addBtn: {
-    backgroundColor: colors.accent, borderRadius: radius.xl,
-    paddingVertical: 16, alignItems: 'center',
-  },
-  addBtnText: { color: colors.accentText, fontSize: font.sizeMD, fontWeight: '800' },
-
-  list: { paddingHorizontal: 10, paddingBottom: spacing.xl, flexGrow: 1 },
-
-  empty: { alignItems: 'center', paddingHorizontal: spacing.lg, paddingTop: spacing.lg },
-  emptyTitle: { color: colors.text, fontSize: font.sizeLG, fontWeight: '700', textAlign: 'center' },
-  emptySub: { color: colors.textMuted, fontSize: font.sizeSM, textAlign: 'center', marginTop: spacing.sm },
-  retryBtn: {
-    marginTop: spacing.lg, backgroundColor: colors.surface, borderRadius: radius.pill,
-    paddingHorizontal: spacing.lg, paddingVertical: spacing.md,
-  },
-  retryText: { color: colors.accent, fontSize: font.sizeMD, fontWeight: '700' },
+  addBtn: { width: 36, height: 36, backgroundColor: colors.accent, alignItems: 'center', justifyContent: 'center' },
+  list: { paddingTop: 2, paddingBottom: spacing.xl, flexGrow: 1 },
 });
-

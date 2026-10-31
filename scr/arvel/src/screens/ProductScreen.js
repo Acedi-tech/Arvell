@@ -353,7 +353,7 @@ export default function ProductScreen({ navigation, route }) {
         {isOwn ? (
           <>
             {offSale && <View style={styles.offPlaque}><Text style={styles.offPlaqueText}>Снято с продажи</Text></View>}
-            <View style={styles.ownNote}><Text style={styles.ownNoteText}>Это ваше объявление</Text></View>
+            <Button title="Редактировать" onPress={() => navigation.navigate('AddProduct', { editId: product.id })} />
           </>
         ) : (
           <View style={styles.buyRow}>
@@ -449,6 +449,4 @@ const styles = StyleSheet.create({
   buyRow: { flexDirection: 'row', gap: spacing.sm },
   offPlaque: { height: 34, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.surface },
   offPlaqueText: { ...type.mono, fontSize: 11, color: colors.textMuted },
-  ownNote: { height: 48, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: colors.border },
-  ownNoteText: { ...type.mono, fontSize: 12, color: colors.textMuted },
 });

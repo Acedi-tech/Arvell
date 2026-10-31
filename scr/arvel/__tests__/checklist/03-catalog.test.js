@@ -561,7 +561,8 @@ forEachRole(({ t }) => {
     it('Product (продавец): на своём товаре нет «Купить» и чата', async () => {
       setAuth({ user: { id: 'owner-1', name: 'Алекс', role: 'seller' } });
       render(<ProductScreen navigation={navigation} route={route} />);
-      expect(await screen.findByText('Это ваше объявление')).toBeTruthy();
+      fireEvent.press(await screen.findByText('Редактировать'));
+      expect(navigation.navigate).toHaveBeenCalledWith('AddProduct', { editId: 'p1' });
       expect(screen.queryByText('Купить')).toBeNull();
       expect(screen.queryByLabelText('Написать продавцу')).toBeNull();
     });
@@ -569,7 +570,7 @@ forEachRole(({ t }) => {
     it('Product (продавец): «Снять с продажи» и обратно', async () => {
       setAuth({ user: { id: 'owner-1', name: 'Алекс', role: 'seller' } });
       render(<ProductScreen navigation={navigation} route={route} />);
-      await screen.findByText('Это ваше объявление');
+      await screen.findByText('Редактировать');
       expect(screen.queryByLabelText('В избранное')).toBeNull();
       fireEvent.press(screen.getByLabelText('Действия с объявлением'));
       fireEvent.press(screen.getByText('Снять с продажи'));
@@ -583,7 +584,7 @@ forEachRole(({ t }) => {
     it('Product (продавец): «Удалить объявление» -> подтверждение -> назад', async () => {
       setAuth({ user: { id: 'owner-1', name: 'Алекс', role: 'seller' } });
       render(<ProductScreen navigation={navigation} route={route} />);
-      await screen.findByText('Это ваше объявление');
+      await screen.findByText('Редактировать');
       fireEvent.press(screen.getByLabelText('Действия с объявлением'));
       fireEvent.press(screen.getByText('Удалить объявление'));
       fireEvent.press(screen.getByText('Удалить'));

@@ -1,72 +1,53 @@
+// Карточка своего объявления (Editorial, design/v3-c.jsx → V3MyListings):
+// та же карточка, что в ленте, но без сердечка; в углу фото «…» с меню
+// «Снять с продажи / Вернуть в продажу / Удалить». Снятые — бледнее
+// и с плашкой «Снято».
 import React, { useState } from 'react';
 import { View, StyleSheet, Pressable } from 'react-native';
 import { Text } from './AppText';
-import { colors, spacing, radius, font } from '../theme';
-import { CheckCircle, TeeIcon, TrashIcon, MoreIcon } from './Icons';
+import { colors, type } from '../theme';
+import { MoreIcon } from './Icons';
 import ConfirmDialog from './ConfirmDialog';
-import RemoteImage from './RemoteImage';
-import { useMoney } from '../context/AppConfigContext';
-import { resolveMediaUrl } from '../utils/media';
+import ProductCard from './ProductCard';
 
-// product — ProductSummary с бэкенда. out_of_stock у нас — «Продано».
-export default function MyListingCard({ product, onPress, onMarkSold, onDelete }) {
-  const money = useMoney();
+// product — ProductSummary с бэкенда. out_of_stock у нас — «снято с продажи».
+export default function MyListingCard({ product, onPress, onMarkSold, onMarkActive, onDelete }) {
   const [menuOpen, setMenuOpen] = useState(false);
   const [confirmVisible, setConfirmVisible] = useState(false);
-  const imageUrl = resolveMediaUrl(product.thumbnail_url);
-  const sold = product.status === 'out_of_stock';
+  const off = product.status === 'out_of_stock';
 
-  const askDelete = () => {
-    setMenuOpen(false);
-    setConfirmVisible(true);
-  };
+  const moreBtn = (
+    <Pressable
+      style={styles.moreBtn}
+      hitSlop={8}
+      accessibilityLabel="Меню объявления"
+      onPress={() => setMenuOpen((v) => !v)}
+    >
+      <MoreIcon size={18} color={colors.text} />
+    </Pressable>
+  );
 
   return (
-    <Pressable style={[styles.card, sold && styles.cardSold]} onPress={onPress}>
-      <View style={styles.imageWrap}>
-        {imageUrl ? (
-          <RemoteImage uri={imageUrl} style={styles.image} placeholder={<TeeIcon size={90} />} />
-        ) : (
-          <TeeIcon size={90} />
-        )}
+    <View>
+      <View style={off && styles.dim}>
+        <ProductCard product={product} onPress={onPress} hideFav topRight={moreBtn} />
       </View>
-
-      <View style={styles.statusRow}>
-        <View style={[styles.statusBadge, sold ? styles.statusBadgeSold : styles.statusBadgeActive]}>
-          <Text style={[styles.statusText, sold ? styles.statusTextSold : styles.statusTextActive]}>
-            {sold ? 'Продано' : 'Активно'}
-          </Text>
+      {off && (
+        <View style={styles.offBadge} pointerEvents="none">
+          <Text style={styles.offText}>Снято</Text>
         </View>
-      </View>
+      )}
 
-      <View style={styles.info}>
-        <Text style={styles.brand} numberOfLines={1}>{product.brand?.name || ''}</Text>
-        <Text style={styles.title} numberOfLines={1}>{product.title}</Text>
-        <Text style={styles.price}>{money.formatMinor(product.price_minor)}</Text>
-      </View>
-
-      <View style={styles.menuWrap}>
-        <Pressable style={styles.menuBtn} hitSlop={8} accessibilityLabel="Меню объявления" onPress={() => setMenuOpen((v) => !v)}>
-          <MoreIcon size={18} color={colors.text} />
-        </Pressable>
-      </View>
-
-      {/* Меню растягиваем по ширине карточки, а не от кнопки влево: карточка
-          в две колонки уже 190 px, и у левой меню уезжало за край экрана. */}
       {menuOpen && (
-        <View style={styles.dropdown}>
-          {!sold && (
-            <Pressable
-              style={[styles.dropdownItem, styles.dropdownItemBorder]}
-              onPress={() => { setMenuOpen(false); onMarkSold(product.id); }}
-            >
-              <CheckCircle size={16} />
-              <Text style={styles.dropdownText}>Отметить проданным</Text>
-            </Pressable>
-          )}
-          <Pressable style={styles.dropdownItem} onPress={askDelete}>
-            <TrashIcon size={16} color={colors.danger} />
-            <Text style={[styles.dropdownText, styles.dropdownTextDanger]}>Удалить объявление</Text>
+        <View style={styles.menu}>
+          <Pressable
+            style={styles.menuRow}
+            onPress={() => { setMenuOpen(false); (off ? onMarkActive : onMarkSold)?.(product.id); }}
+          >
+            <Text style={styles.menuText}>{off ? 'Вернуть в продажу' : 'Снять с продажи'}</Text>
+          </Pressable>
+          <Pressable style={[styles.menuRow, styles.menuLast]} onPress={() => { setMenuOpen(false); setConfirmVisible(true); }}>
+            <Text style={[styles.menuText, { color: colors.danger }]}>Удалить</Text>
           </Pressable>
         </View>
       )}
@@ -74,69 +55,29 @@ export default function MyListingCard({ product, onPress, onMarkSold, onDelete }
       <ConfirmDialog
         visible={confirmVisible}
         title="Удалить объявление?"
-        message="Это действие необратимо."
+        message="Это действие нельзя отменить."
         confirmText="Удалить"
         cancelText="Отмена"
         onCancel={() => setConfirmVisible(false)}
-        onConfirm={() => { setConfirmVisible(false); onDelete(product.id); }}
+        onConfirm={() => { setConfirmVisible(false); onDelete?.(product.id); }}
       />
-    </Pressable>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  card: {
-    flex: 1,
-    maxWidth: '50%',
-    backgroundColor: colors.surfaceCard,
-    borderRadius: radius.lg,
-    margin: 6,
+  dim: { opacity: 0.55 },
+  moreBtn: {
+    position: 'absolute', top: 8, right: 8, width: 32, height: 32, borderRadius: 16,
+    backgroundColor: 'rgba(0,0,0,0.6)', alignItems: 'center', justifyContent: 'center',
   },
-  cardSold: { opacity: 0.55 },
-  imageWrap: {
-    height: 160,
-    backgroundColor: colors.surfaceAlt,
-    borderTopLeftRadius: radius.lg,
-    borderTopRightRadius: radius.lg,
-    overflow: 'hidden',
-    alignItems: 'center',
-    justifyContent: 'center',
+  offBadge: { position: 'absolute', top: 10, left: 10, backgroundColor: colors.surfaceAlt, paddingHorizontal: 7, paddingVertical: 3 },
+  offText: { ...type.mono, fontSize: 9.5, color: colors.textSub },
+  menu: {
+    position: 'absolute', top: 44, right: 8, zIndex: 5, minWidth: 170,
+    backgroundColor: colors.surfaceAlt, borderWidth: 1, borderColor: colors.border,
   },
-  image: { width: '100%', height: '100%' },
-
-  statusRow: { paddingHorizontal: spacing.md, paddingTop: spacing.sm },
-  statusBadge: {
-    alignSelf: 'flex-start', borderRadius: radius.sm,
-    paddingHorizontal: 8, paddingVertical: 3,
-  },
-  statusBadgeActive: { backgroundColor: colors.accentDim },
-  statusBadgeSold: { backgroundColor: colors.chipInactive },
-  statusText: { fontSize: font.sizeXS, fontWeight: '800' },
-  statusTextActive: { color: colors.accent },
-  statusTextSold: { color: colors.textMuted },
-
-  info: { padding: spacing.md, paddingTop: spacing.sm },
-  brand: { color: colors.text, fontSize: font.sizeMD, fontWeight: '700' },
-  title: { color: colors.textMuted, fontSize: font.sizeSM, marginTop: 2 },
-  price: { color: colors.accent, fontSize: font.sizeMD, fontWeight: '800', marginTop: spacing.sm },
-
-  menuWrap: { position: 'absolute', top: spacing.sm + 2, right: spacing.sm + 2 },
-  menuBtn: {
-    width: 32, height: 32, borderRadius: 16,
-    backgroundColor: 'rgba(0,0,0,0.55)',
-    alignItems: 'center', justifyContent: 'center',
-  },
-  dropdown: {
-    position: 'absolute', top: spacing.sm + 40, left: spacing.sm, right: spacing.sm,
-    backgroundColor: colors.surface, borderRadius: radius.md,
-    borderWidth: 1, borderColor: colors.border,
-    overflow: 'hidden', zIndex: 20, elevation: 8,
-  },
-  dropdownItem: {
-    flexDirection: 'row', alignItems: 'center', gap: spacing.sm,
-    paddingHorizontal: spacing.md, paddingVertical: spacing.md,
-  },
-  dropdownItemBorder: { borderBottomWidth: 1, borderBottomColor: colors.border },
-  dropdownText: { flexShrink: 1, color: colors.text, fontSize: font.sizeSM, fontWeight: '600' },
-  dropdownTextDanger: { color: colors.danger },
+  menuRow: { paddingHorizontal: 14, paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: colors.border },
+  menuLast: { borderBottomWidth: 0 },
+  menuText: { color: colors.text, fontSize: 14 },
 });
