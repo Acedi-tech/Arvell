@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, Pressable } from 'react-native';
+import { View, StyleSheet, Pressable } from 'react-native';
+import { Text } from './AppText';
 import { colors, spacing, radius, font } from '../theme';
 import { CheckCircle, TeeIcon, TrashIcon, MoreIcon } from './Icons';
 import ConfirmDialog from './ConfirmDialog';

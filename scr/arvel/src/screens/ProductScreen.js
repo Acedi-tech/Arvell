@@ -1,8 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useFocusEffect } from '@react-navigation/native';
-import {
-  View, Text, StyleSheet, Pressable, ScrollView, Image, ActivityIndicator, Share, useWindowDimensions,
-} from 'react-native';
+import { View, StyleSheet, Pressable, ScrollView, Image, ActivityIndicator, Share, useWindowDimensions } from 'react-native';
+import { Text } from '../components/AppText';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { colors, spacing, radius, font } from '../theme';
 import { BackIcon, ShareIcon, StarIcon, ChatIcon, HeartIcon, TeeIcon } from '../components/Icons';

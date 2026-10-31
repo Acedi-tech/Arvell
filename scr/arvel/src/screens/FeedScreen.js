@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { View, Text, FlatList, StyleSheet, ActivityIndicator, Pressable } from 'react-native';
+import { View, FlatList, StyleSheet, ActivityIndicator, Pressable } from 'react-native';
+import { Text } from '../components/AppText';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { colors, spacing, font } from '../theme';
 import ProductCard from '../components/ProductCard';

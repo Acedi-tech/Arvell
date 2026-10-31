@@ -1,7 +1,8 @@
 // Экран «Мои объявления» продавца: список его товаров + «Добавить товар».
 // Открывается из плитки статистики в «Профиле».
 import React, { useCallback } from 'react';
-import { View, Text, FlatList, StyleSheet, Pressable, ActivityIndicator, Alert } from 'react-native';
+import { View, FlatList, StyleSheet, Pressable, ActivityIndicator, Alert } from 'react-native';
+import { Text } from '../components/AppText';
 import { useFocusEffect } from '@react-navigation/native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { colors, spacing, radius, font } from '../theme';

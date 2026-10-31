@@ -2,7 +2,8 @@
 // сделок», когда продавец подтвердил продажу (viewer_context.can_review).
 // route.params: { productId, title?, thumbnail? }
 import React, { useState } from 'react';
-import { View, Text, TextInput, Pressable, Image, ScrollView, StyleSheet } from 'react-native';
+import { View, Pressable, Image, ScrollView, StyleSheet } from 'react-native';
+import { Text, TextInput } from '../components/AppText';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { colors, spacing, radius, font } from '../theme';
 import { BackIcon, TeeIcon } from '../components/Icons';

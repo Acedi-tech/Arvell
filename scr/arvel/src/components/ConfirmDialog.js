@@ -1,5 +1,6 @@
 import React from 'react';
-import { Modal, View, Text, Pressable, StyleSheet } from 'react-native';
+import { Modal, View, Pressable, StyleSheet } from 'react-native';
+import { Text } from './AppText';
 import { colors, spacing, radius, font } from '../theme';
 
 // Тёмный кастомный диалог подтверждения — вместо системного Alert.alert,

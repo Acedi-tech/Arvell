@@ -1,7 +1,6 @@
 import React, { useState, useRef } from 'react';
-import {
-  View, Text, TextInput, StyleSheet, Pressable, ScrollView, Alert, Image,
-} from 'react-native';
+import { View, StyleSheet, Pressable, ScrollView, Alert, Image } from 'react-native';
+import { Text, TextInput } from '../components/AppText';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Svg, { Path } from 'react-native-svg';
 import { colors, spacing, radius, font } from '../theme';

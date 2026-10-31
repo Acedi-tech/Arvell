@@ -1,5 +1,6 @@
 import React, { useState, useCallback } from 'react';
-import { View, Text, TextInput, FlatList, StyleSheet, Pressable, Alert, Image } from 'react-native';
+import { View, FlatList, StyleSheet, Pressable, Alert, Image } from 'react-native';
+import { Text, TextInput } from '../components/AppText';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect } from '@react-navigation/native';
 import { colors, spacing, radius, font } from '../theme';

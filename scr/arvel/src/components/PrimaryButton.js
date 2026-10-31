@@ -1,5 +1,6 @@
 import React from 'react';
-import { Text, Pressable, StyleSheet } from 'react-native';
+import { Pressable, StyleSheet } from 'react-native';
+import { Text } from './AppText';
 import { colors, spacing, radius, font } from '../theme';
 
 export default function PrimaryButton({ title, onPress, disabled = false }) {

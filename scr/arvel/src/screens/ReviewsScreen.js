@@ -2,7 +2,8 @@
 // route.params: { shopId } или { productId }, плюс title, rating, ratingCount
 // для шапки — чтобы она не ждала сети.
 import React, { useCallback, useEffect, useState } from 'react';
-import { View, Text, FlatList, Pressable, ActivityIndicator, StyleSheet } from 'react-native';
+import { View, FlatList, Pressable, ActivityIndicator, StyleSheet } from 'react-native';
+import { Text } from '../components/AppText';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { colors, spacing, font } from '../theme';
 import { BackIcon } from '../components/Icons';

@@ -1,7 +1,6 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
-import {
-  View, Text, TextInput, StyleSheet, Pressable, ScrollView, Image, Alert, Linking, Modal,
-} from 'react-native';
+import { View, StyleSheet, Pressable, ScrollView, Image, Alert, Linking, Modal } from 'react-native';
+import { Text, TextInput } from '../components/AppText';
 import * as ImagePicker from 'expo-image-picker';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { colors, spacing, radius, font } from '../theme';

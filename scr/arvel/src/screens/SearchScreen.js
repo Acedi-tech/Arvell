@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { View, Text, TextInput, FlatList, StyleSheet, Pressable, ScrollView, ActivityIndicator, Keyboard } from 'react-native';
+import { View, FlatList, StyleSheet, Pressable, ScrollView, ActivityIndicator, Keyboard } from 'react-native';
+import { Text, TextInput } from '../components/AppText';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { colors, spacing, radius, font } from '../theme';

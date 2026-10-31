@@ -1,5 +1,6 @@
 import React from 'react';
-import { View, Text, StyleSheet, Pressable, Modal, Alert } from 'react-native';
+import { View, StyleSheet, Pressable, Modal, Alert } from 'react-native';
+import { Text } from './AppText';
 import * as ImagePicker from 'expo-image-picker';
 import { colors, spacing, radius, font } from '../theme';
 import { CameraIcon, ImageIcon, CloseIcon } from './Icons';

@@ -6,7 +6,8 @@
 // Правки копятся в черновике и уходят наружу только по «Показать», чтобы
 // каталог не перезапрашивался на каждый тап.
 import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, Pressable, ScrollView, Modal, TextInput } from 'react-native';
+import { View, StyleSheet, Pressable, ScrollView, Modal } from 'react-native';
+import { Text, TextInput } from './AppText';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { colors, spacing, radius, font } from '../theme';
 import { CloseIcon } from './Icons';

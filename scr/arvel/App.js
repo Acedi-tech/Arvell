@@ -1,6 +1,7 @@
 import React, { useEffect } from 'react';
 import { Platform, View, StyleSheet } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
+import { useFonts } from 'expo-font';
 import * as SystemUI from 'expo-system-ui';
 import * as NavigationBar from 'expo-navigation-bar';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
@@ -14,7 +15,7 @@ import { AppConfigProvider } from './src/context/AppConfigContext';
 import { ChatUnreadProvider } from './src/context/ChatUnreadContext';
 import RootNavigator from './src/navigation/RootNavigator';
 import linking from './src/navigation/linking';
-import { colors } from './src/theme';
+import { colors, fontFiles } from './src/theme';
 
 // По умолчанию NavigationContainer использует светлую тему React Navigation
 // (белый background/card) — во время интерактивного жеста "смахнуть назад"
@@ -33,6 +34,11 @@ const navTheme = {
 };
 
 export default function App() {
+  // Шрифты локальные и грузятся за доли секунды. Пока не готовы, держим
+  // чёрный экран: иначе первый кадр мелькнёт системным шрифтом. Если
+  // загрузка сорвалась (fontError), показываем приложение с системным.
+  const [fontsLoaded, fontError] = useFonts(fontFiles);
+
   useEffect(() => {
     // Фон окна приложения: в режиме edge-to-edge системные панели
     // прозрачные и показывают именно его. По умолчанию он белый —
@@ -44,6 +50,10 @@ export default function App() {
       NavigationBar.setBackgroundColorAsync(colors.bg).catch(() => {});
     }
   }, []);
+
+  if (!fontsLoaded && !fontError) {
+    return <View style={{ flex: 1, backgroundColor: colors.bg }} />;
+  }
 
   const content = (
     <GestureHandlerRootView style={{ flex: 1 }}>

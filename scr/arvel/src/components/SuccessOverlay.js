@@ -1,5 +1,6 @@
 import React, { useEffect, useRef } from 'react';
-import { Modal, View, Text, Pressable, StyleSheet, Animated } from 'react-native';
+import { Modal, View, Pressable, StyleSheet, Animated } from 'react-native';
+import { Text } from './AppText';
 import Svg, { Polyline } from 'react-native-svg';
 import { colors, spacing, font } from '../theme';
 

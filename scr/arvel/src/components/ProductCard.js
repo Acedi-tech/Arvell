@@ -1,5 +1,6 @@
 import React from 'react';
-import { View, Text, StyleSheet, Pressable } from 'react-native';
+import { View, StyleSheet, Pressable } from 'react-native';
+import { Text } from './AppText';
 import { useNavigation } from '@react-navigation/native';
 import { colors, spacing, radius, font } from '../theme';
 import { HeartIcon, TeeIcon, SneakerIcon } from './Icons';

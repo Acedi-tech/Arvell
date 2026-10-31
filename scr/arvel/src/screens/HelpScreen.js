@@ -1,6 +1,7 @@
 // Экран помощи: FAQ (раскрывающиеся) + служба поддержки.
 import React, { useState } from 'react';
-import { View, Text, ScrollView, Pressable, StyleSheet } from 'react-native';
+import { View, ScrollView, Pressable, StyleSheet } from 'react-native';
+import { Text } from '../components/AppText';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { colors, spacing, radius, font } from '../theme';
 import { BackIcon, ChevronRight } from '../components/Icons';

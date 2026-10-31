@@ -1,7 +1,8 @@
 // Экран «Заказы» (покупатель) / «Продажи» (продавец).
 // Открывается из плиток статистики в «Профиле».
 import React, { useState, useEffect, useCallback } from 'react';
-import { View, Text, StyleSheet, Pressable, ScrollView, Modal, ActivityIndicator, Image } from 'react-native';
+import { View, StyleSheet, Pressable, ScrollView, Modal, ActivityIndicator, Image } from 'react-native';
+import { Text } from '../components/AppText';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect } from '@react-navigation/native';
 import { colors, spacing, radius, font } from '../theme';

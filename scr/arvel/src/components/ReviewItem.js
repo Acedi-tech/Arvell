@@ -1,5 +1,6 @@
 import React from 'react';
-import { View, Text, Image, StyleSheet } from 'react-native';
+import { View, Image, StyleSheet } from 'react-native';
+import { Text } from './AppText';
 import { colors, spacing, font } from '../theme';
 import StarRating from './StarRating';
 import { resolveMediaUrl } from '../utils/media';
