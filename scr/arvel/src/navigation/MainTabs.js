@@ -125,11 +125,17 @@ export default function MainTabs() {
   // Гость может листать каталог/ленту/избранное свободно, но «Чат» и
   // «Профиль» требуют входа — вместо переключения вкладки открываем модалку
   // авторизации (см. RootNavigator).
-  const guardTab = ({ navigation }) => ({
+  // Заголовок входа говорит, зачем он нужен (см. WelcomeScreen).
+  const AUTH_REASON = {
+    Favorites: 'Войдите, чтобы сохранять в избранное',
+    Chat: 'Войдите, чтобы видеть чаты',
+    Account: 'Войдите в свой профиль',
+  };
+  const guardTab = ({ navigation, route }) => ({
     tabPress: (e) => {
       if (!isLoggedIn) {
         e.preventDefault();
-        navigation.navigate('Auth');
+        navigation.navigate('Auth', { reason: AUTH_REASON[route.name] });
       }
     },
   });

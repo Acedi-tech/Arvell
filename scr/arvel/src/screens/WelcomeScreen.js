@@ -1,31 +1,28 @@
+// Первый шаг входа. Заголовок зависит от того, зачем человек входит
+// (route.params.reason): «Войдите, чтобы связаться с продавцом» и т.п.
 import React from 'react';
 import { View, StyleSheet } from 'react-native';
-import { Text } from '../components/AppText';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { colors, spacing, font } from '../theme';
+import { Text } from '../components/AppText';
+import { colors, spacing } from '../theme';
 import Logo from '../components/Logo';
-import ShieldIcon from '../components/ShieldIcon';
-import PrimaryButton from '../components/PrimaryButton';
+import Button from '../components/Button';
+import AuthHeader, { closeAuth } from '../components/AuthHeader';
 
-export default function WelcomeScreen({ navigation }) {
+export default function WelcomeScreen({ navigation, route }) {
+  const reason = route?.params?.reason;
+  const canClose = !!navigation.getParent?.()?.canGoBack?.();
   return (
     <SafeAreaView style={styles.safe}>
+      <AuthHeader onClose={canClose ? () => closeAuth(navigation) : null} />
       <View style={styles.center}>
-        <Logo size={96} />
-        <Text style={styles.brand}>ARVELL</Text>
-
-        <Text style={styles.sub}>
-          Площадка брендовой одежды с{'\n'}гарантией подлинности
-        </Text>
-
-        <View style={styles.tagRow}>
-          <ShieldIcon size={18} filled />
-          <Text style={styles.tag}>Каждый товар проверен</Text>
-        </View>
+        <Logo size={88} />
+        <Text style={styles.title}>{reason || 'Войдите в ARVELL'}</Text>
+        <Text style={styles.sub}>Вход нужен, чтобы писать продавцам и сохранять избранное</Text>
       </View>
 
       <View style={styles.footer}>
-        <PrimaryButton title="Войти" onPress={() => navigation.navigate('Phone')} />
+        <Button title="Войти" onPress={() => navigation.navigate('Phone')} />
         <Text style={styles.legal}>
           Продолжая, вы принимаете{' '}
           <Text
@@ -41,7 +38,7 @@ export default function WelcomeScreen({ navigation }) {
             suppressHighlighting
             onPress={() => navigation.navigate('Legal', { doc: 'privacy' })}
           >
-            Политику{'\n'}конфиденциальности
+            Политику конфиденциальности
           </Text>
         </Text>
       </View>
@@ -51,21 +48,10 @@ export default function WelcomeScreen({ navigation }) {
 
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.bg },
-  center: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: spacing.lg },
-  brand: {
-    color: colors.text, fontSize: font.sizeLG, fontWeight: '800',
-    letterSpacing: 6, marginTop: spacing.lg,
-  },
-  sub: {
-    color: colors.textMuted, fontSize: font.sizeMD, textAlign: 'center',
-    marginTop: spacing.lg, lineHeight: 24,
-  },
-  tagRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: spacing.lg },
-  tag: { color: colors.textMuted, fontSize: font.sizeSM },
-  footer: { paddingHorizontal: spacing.lg, paddingBottom: spacing.md },
-  legal: {
-    color: colors.textFaint, fontSize: font.sizeXS, textAlign: 'center',
-    marginTop: spacing.md, lineHeight: 18,
-  },
-  legalLink: { color: colors.textMuted, fontWeight: '600' },
+  center: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: spacing.lg, gap: 18 },
+  title: { color: colors.text, fontSize: 22, fontWeight: '800', textAlign: 'center', marginTop: 4 },
+  sub: { color: colors.textSub, fontSize: 15, textAlign: 'center', lineHeight: 22, maxWidth: 280 },
+  footer: { paddingHorizontal: spacing.lg, paddingBottom: spacing.lg },
+  legal: { color: colors.textMuted, fontSize: 12, textAlign: 'center', marginTop: spacing.md, lineHeight: 18 },
+  legalLink: { color: colors.textSub },
 });

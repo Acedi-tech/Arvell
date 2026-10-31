@@ -200,9 +200,9 @@ describe('РЕГИСТРАЦИЯ И ВХОД', () => {
     it('Таймер повторной отправки (30 сек)', () => {
       jest.useFakeTimers();
       render(<VerifyScreen navigation={navigation} route={route} />);
-      expect(screen.getByText('Отправить код повторно через 30 с')).toBeTruthy();
+      expect(screen.getByText('Отправить код повторно через 0:30')).toBeTruthy();
       act(() => { jest.advanceTimersByTime(1000); });
-      expect(screen.getByText('Отправить код повторно через 29 с')).toBeTruthy();
+      expect(screen.getByText('Отправить код повторно через 0:29')).toBeTruthy();
       for (let i = 0; i < 29; i += 1) act(() => { jest.advanceTimersByTime(1000); });
       expect(screen.queryByText(/через \d+ с/)).toBeNull();
       expect(screen.getByText('Отправить код повторно')).toBeTruthy();
@@ -215,7 +215,7 @@ describe('РЕГИСТРАЦИЯ И ВХОД', () => {
       for (let i = 0; i < 30; i += 1) act(() => { jest.advanceTimersByTime(1000); });
       fireEvent.press(screen.getByText('Отправить код повторно'));
       expect(auth.registerPhone).toHaveBeenCalledWith('+79990001122');
-      expect(screen.getByText('Отправить код повторно через 30 с')).toBeTruthy();
+      expect(screen.getByText('Отправить код повторно через 0:30')).toBeTruthy();
     });
   });
 
@@ -340,7 +340,7 @@ describe('РЕГИСТРАЦИЯ И ВХОД', () => {
       render(<ProfileSetupScreen navigation={navigation} />);
       fireEvent.press(screen.getByText('Я продавец'));
       expect(screen.getByPlaceholderText('Код из приглашения ARVELL')).toBeTruthy();
-      expect(screen.getByPlaceholderText('Например, Alex Sneaker Shop')).toBeTruthy();
+      expect(screen.getByPlaceholderText('Например, Archive Room')).toBeTruthy();
       expect(screen.getByText('Получить код из SMS')).toBeTruthy();
     });
   });
@@ -420,7 +420,7 @@ describe('РЕГИСТРАЦИЯ И ВХОД', () => {
       fireEvent.changeText(screen.getByPlaceholderText('Введите имя'), name);
       fireEvent.press(screen.getByText('Я продавец'));
       fireEvent.changeText(screen.getByPlaceholderText('Код из приглашения ARVELL'), invite);
-      fireEvent.changeText(screen.getByPlaceholderText('Например, Alex Sneaker Shop'), shop);
+      fireEvent.changeText(screen.getByPlaceholderText('Например, Archive Room'), shop);
     };
     const goToOtp = async (auth) => {
       fillSellerForm();
@@ -441,8 +441,8 @@ describe('РЕГИСТРАЦИЯ И ВХОД', () => {
     it('Поле «Название магазина»', () => {
       render(<ProfileSetupScreen navigation={navigation} />);
       fireEvent.press(screen.getByText('Я продавец'));
-      fireEvent.changeText(screen.getByPlaceholderText('Например, Alex Sneaker Shop'), 'Alex Shop');
-      expect(screen.getByPlaceholderText('Например, Alex Sneaker Shop').props.value).toBe('Alex Shop');
+      fireEvent.changeText(screen.getByPlaceholderText('Например, Archive Room'), 'Alex Shop');
+      expect(screen.getByPlaceholderText('Например, Archive Room').props.value).toBe('Alex Shop');
     });
 
     it('Кнопка «Получить код из SMS»', async () => {

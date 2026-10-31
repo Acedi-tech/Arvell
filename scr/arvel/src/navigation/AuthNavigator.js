@@ -10,7 +10,7 @@ import LegalScreen from '../screens/LegalScreen';
 
 const Stack = createNativeStackNavigator();
 
-export default function AuthNavigator() {
+export default function AuthNavigator({ reason }) {
   // pendingUser: код уже подтверждён (токены рабочие), но имя не собрано —
   // например, приложение свернули/закрыли на ProfileSetup. Открываем сразу
   // туда, а не заставляем заново вводить телефон и код.
@@ -24,7 +24,7 @@ export default function AuthNavigator() {
         animation: 'slide_from_right',
       }}
     >
-      <Stack.Screen name="Welcome" component={WelcomeScreen} />
+      <Stack.Screen name="Welcome" component={WelcomeScreen} initialParams={{ reason }} />
       <Stack.Screen name="Phone" component={PhoneScreen} />
       <Stack.Screen name="Verify" component={VerifyScreen} />
       <Stack.Screen name="ProfileSetup" component={ProfileSetupScreen} />

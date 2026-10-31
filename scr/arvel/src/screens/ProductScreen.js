@@ -29,7 +29,7 @@ export default function ProductScreen({ navigation, route }) {
   // написать по нему самому себе нельзя.
   const openConversation = (fromBuy) => {
     if (!isLoggedIn) {
-      navigation.navigate('Auth');
+      navigation.navigate('Auth', { reason: 'Войдите, чтобы связаться с продавцом' });
       return;
     }
     if (isOwn) return;
@@ -45,7 +45,7 @@ export default function ProductScreen({ navigation, route }) {
 
   const onLikePress = () => {
     if (!isLoggedIn) {
-      navigation.navigate('Auth');
+      navigation.navigate('Auth', { reason: 'Войдите, чтобы сохранять в избранное' });
       return;
     }
     toggleFavorite(product.id, product);

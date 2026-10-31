@@ -1,9 +1,9 @@
 import React, { useState, useRef } from 'react';
-import { View, StyleSheet, Pressable } from 'react-native';
+import { View, StyleSheet } from 'react-native';
 import { Text, TextInput } from '../components/AppText';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { colors, spacing, radius, font } from '../theme';
-import { BackIcon } from '../components/Icons';
+import { colors, spacing, font } from '../theme';
+import AuthHeader, { closeAuth } from '../components/AuthHeader';
 import KeyboardAware from '../components/KeyboardAware';
 import PrimaryButton from '../components/PrimaryButton';
 import { useAuth } from '../context/AuthContext';
@@ -82,20 +82,14 @@ export default function PhoneScreen({ navigation }) {
   return (
     <SafeAreaView style={styles.safe}>
       <KeyboardAware>
-      <View style={styles.header}>
-        <Pressable hitSlop={10} accessibilityLabel="Назад" onPress={() => navigation.goBack()}>
-          <BackIcon />
-        </Pressable>
-        <Text style={styles.headerTitle}>Вход</Text>
-        <View style={{ width: 26 }} />
-      </View>
+      <AuthHeader title="Вход" onBack={() => navigation.goBack()} onClose={() => closeAuth(navigation)} />
 
       <View style={styles.body}>
-        <Text style={styles.title}>Введите номер{'\n'}телефона</Text>
+        <Text style={styles.title}>Введите номер телефона</Text>
         <Text style={styles.sub}>Мы отправим SMS с кодом подтверждения</Text>
 
         <TextInput
-          style={styles.input}
+          style={[styles.input, started && styles.inputFilled]}
           placeholder="+7 (___) ___-__-__"
           placeholderTextColor={colors.textFaint}
           keyboardType="phone-pad"
@@ -122,22 +116,18 @@ export default function PhoneScreen({ navigation }) {
 
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.bg },
-  header: {
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-    paddingHorizontal: spacing.md, paddingVertical: spacing.sm,
-  },
-  headerTitle: { color: colors.textMuted, fontSize: font.sizeMD, fontWeight: '600' },
-  body: { flex: 1, paddingHorizontal: spacing.lg, paddingTop: spacing.lg },
-  title: { color: colors.text, fontSize: font.sizeXXL, fontWeight: '800', lineHeight: 40 },
-  sub: { color: colors.textMuted, fontSize: font.sizeMD, marginTop: spacing.md },
+  body: { flex: 1, paddingHorizontal: spacing.lg, paddingTop: spacing.md },
+  title: { color: colors.text, fontSize: 24, fontWeight: '800', lineHeight: 30 },
+  sub: { color: colors.textMuted, fontSize: font.sizeSM, marginTop: 10, lineHeight: 21 },
   input: {
+    height: 58,
     backgroundColor: colors.surface,
-    borderRadius: radius.lg,
     borderWidth: 1, borderColor: colors.border,
-    color: colors.text, fontSize: font.sizeLG,
-    paddingHorizontal: spacing.lg, paddingVertical: spacing.md,
-    marginTop: spacing.xl,
+    color: colors.text, fontSize: 18, fontWeight: '600', letterSpacing: 0.5,
+    paddingHorizontal: spacing.md,
+    marginTop: 22,
   },
+  inputFilled: { borderColor: colors.accent },
   error: { color: colors.danger, fontSize: font.sizeSM, marginTop: spacing.md },
-  footer: { paddingHorizontal: spacing.lg, paddingBottom: spacing.md },
+  footer: { paddingHorizontal: spacing.lg, paddingBottom: spacing.lg },
 });

@@ -38,7 +38,7 @@ export default function ProductCard({ product, onPress }) {
 
   const onLikePress = () => {
     if (!isLoggedIn) {
-      navigation.navigate('Auth');
+      navigation.navigate('Auth', { reason: 'Войдите, чтобы сохранять в избранное' });
       return;
     }
     toggleFavorite(product.id, product);

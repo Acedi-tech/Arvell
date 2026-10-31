@@ -79,7 +79,7 @@ forEachRole(({ t }) => {
         setProducts({ products: [nike] });
         render(<FeedScreen navigation={navigation} />);
         fireEvent.press(hearts()[0]);
-        expect(navigation.navigate).toHaveBeenCalledWith('Auth');
+        expect(navigation.navigate).toHaveBeenCalledWith('Auth', { reason: 'Войдите, чтобы сохранять в избранное' });
         expect(fav.toggleFavorite).not.toHaveBeenCalled();
       });
 
@@ -466,7 +466,7 @@ forEachRole(({ t }) => {
       render(<ProductScreen navigation={navigation} route={route} />);
       await screen.findByText('Air Max 90');
       fireEvent.press(screen.getByLabelText('В избранное'));
-      expect(navigation.navigate).toHaveBeenCalledWith('Auth');
+      expect(navigation.navigate).toHaveBeenCalledWith('Auth', { reason: 'Войдите, чтобы сохранять в избранное' });
       expect(fav.toggleFavorite).not.toHaveBeenCalled();
     });
 
@@ -512,7 +512,7 @@ forEachRole(({ t }) => {
       render(<ProductScreen navigation={navigation} route={route} />);
       await screen.findByText('Air Max 90');
       fireEvent.press(screen.getByText('Купить'));
-      expect(navigation.navigate).toHaveBeenCalledWith('Auth');
+      expect(navigation.navigate).toHaveBeenCalledWith('Auth', { reason: 'Войдите, чтобы связаться с продавцом' });
     });
 
     it('Product (продавец): на своём товаре нет «Купить» и чата', async () => {

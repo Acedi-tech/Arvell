@@ -1,9 +1,9 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { View, StyleSheet, Pressable } from 'react-native';
+import { View, StyleSheet, Pressable, Animated } from 'react-native';
 import { Text, TextInput } from '../components/AppText';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { colors, spacing, radius, font } from '../theme';
-import { BackIcon } from '../components/Icons';
+import { colors, spacing, font } from '../theme';
+import AuthHeader, { closeAuth } from '../components/AuthHeader';
 import KeyboardAware from '../components/KeyboardAware';
 import { useAuth } from '../context/AuthContext';
 import { otpErrorMessage } from '../utils/otpError';
@@ -26,6 +26,14 @@ export default function VerifyScreen({ navigation, route }) {
   const [verifying, setVerifying] = useState(false);
   const [error, setError] = useState(null);
   const hidden = useRef(null);
+  // Неверный код: ячейки краснеют и коротко трясутся.
+  const [wrong, setWrong] = useState(false);
+  const shake = useRef(new Animated.Value(0)).current;
+  const runShake = () => {
+    shake.setValue(0);
+    Animated.sequence([-8, 8, -5, 5, 0].map((x) =>
+      Animated.timing(shake, { toValue: x, duration: 70, useNativeDriver: true }))).start();
+  };
 
   // Автофокус при открытии экрана — клавиатура поднимается сразу
   useEffect(() => {
@@ -69,6 +77,7 @@ export default function VerifyScreen({ navigation, route }) {
     const digits = text.replace(/\D/g, '').slice(0, LEN);
     setValue(digits);
     setError(null);
+    setWrong(false);
 
     if (digits.length === LEN) {
       setVerifying(true);
@@ -81,6 +90,8 @@ export default function VerifyScreen({ navigation, route }) {
         })
         .catch((e) => {
           setError(otpErrorMessage(e));
+          setWrong(true);
+          runShake();
           setValue('');
           setVerifying(false);
         });
@@ -96,29 +107,25 @@ export default function VerifyScreen({ navigation, route }) {
   return (
     <SafeAreaView style={styles.safe}>
       <KeyboardAware>
-      <View style={styles.header}>
-        <Pressable hitSlop={10} accessibilityLabel="Назад" onPress={() => navigation.goBack()}>
-          <BackIcon />
-        </Pressable>
-        <Text style={styles.headerTitle}>Подтверждение</Text>
-        <View style={{ width: 26 }} />
-      </View>
+      <AuthHeader title="Подтверждение" onBack={() => navigation.goBack()} onClose={() => closeAuth(navigation)} />
 
       <View style={styles.body}>
         <Text style={styles.title}>Введите код</Text>
         <Text style={styles.sub}>{phone ? `Код отправлен на ${phone}` : 'Код отправлен'}</Text>
 
         {/* Тап по любой ячейке возвращает фокус в скрытое поле */}
-        <Pressable style={styles.cells} onPress={openKeyboard}>
-          {Array.from({ length: LEN }).map((_, i) => (
-            <View
-              key={i}
-              style={[styles.cell, value[i] ? styles.cellFilled : null]}
-            >
-              <Text style={styles.cellText}>{value[i] ?? ''}</Text>
-            </View>
-          ))}
-        </Pressable>
+        <Animated.View style={{ transform: [{ translateX: shake }] }}>
+          <Pressable style={styles.cells} onPress={openKeyboard}>
+            {Array.from({ length: LEN }).map((_, i) => (
+              <View
+                key={i}
+                style={[styles.cell, value[i] ? styles.cellFilled : null, wrong && styles.cellWrong]}
+              >
+                <Text style={styles.cellText}>{value[i] ?? ''}</Text>
+              </View>
+            ))}
+          </Pressable>
+        </Animated.View>
 
         {/* Невидимое поле, в котором реально идёт ввод.
             Backspace здесь стирает последнюю цифру — визуально это
@@ -128,6 +135,8 @@ export default function VerifyScreen({ navigation, route }) {
           ref={hidden}
           style={styles.hiddenInput}
           keyboardType="number-pad"
+          textContentType="oneTimeCode"
+          autoComplete="sms-otp"
           value={value}
           onChangeText={onChange}
           maxLength={LEN}
@@ -139,7 +148,7 @@ export default function VerifyScreen({ navigation, route }) {
 
         {seconds > 0 ? (
           <Text style={styles.resendOff}>
-            Отправить код повторно через {seconds} с
+            Отправить код повторно через 0:{String(seconds).padStart(2, '0')}
           </Text>
         ) : pendingPhone ? (
           <Pressable onPress={resend}>
@@ -160,39 +169,34 @@ export default function VerifyScreen({ navigation, route }) {
 
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.bg },
-  header: {
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-    paddingHorizontal: spacing.md, paddingVertical: spacing.sm,
-  },
-  headerTitle: { color: colors.textMuted, fontSize: font.sizeMD, fontWeight: '600' },
-  body: { flex: 1, paddingHorizontal: spacing.lg, paddingTop: spacing.lg },
-  title: { color: colors.text, fontSize: font.sizeXXL, fontWeight: '800' },
-  sub: { color: colors.textMuted, fontSize: font.sizeMD, marginTop: spacing.sm },
-  cells: { flexDirection: 'row', justifyContent: 'space-between', marginTop: spacing.xl },
+  body: { flex: 1, paddingHorizontal: spacing.lg, paddingTop: spacing.md },
+  title: { color: colors.text, fontSize: 24, fontWeight: '800' },
+  sub: { color: colors.textSub, fontSize: font.sizeSM, marginTop: 10, lineHeight: 21 },
+  cells: { flexDirection: 'row', justifyContent: 'center', gap: 12, marginTop: spacing.lg },
   cell: {
-    width: 70, height: 84,
+    width: 62, height: 70,
     backgroundColor: colors.surface,
-    borderRadius: radius.lg,
-    borderWidth: 1, borderColor: colors.border,
+    borderWidth: 1.5, borderColor: colors.border,
     alignItems: 'center', justifyContent: 'center',
   },
   cellFilled: { borderColor: colors.accent },
-  cellText: { color: colors.text, fontSize: font.sizeXXL, fontWeight: '700' },
+  cellWrong: { borderColor: colors.danger },
+  cellText: { color: colors.text, fontSize: 28, fontWeight: '700' },
   hiddenInput: {
     position: 'absolute',
     width: 1, height: 1,
     opacity: 0,
   },
   error: {
-    color: colors.danger, fontSize: font.sizeSM,
-    textAlign: 'center', marginTop: spacing.lg,
+    color: colors.danger, fontSize: 13,
+    textAlign: 'center', marginTop: 12,
   },
   resendOff: {
-    color: colors.textMuted, fontSize: font.sizeMD,
+    color: colors.textMuted, fontSize: font.sizeSM,
     textAlign: 'center', marginTop: spacing.xl,
   },
   resendOn: {
-    color: colors.accent, fontSize: font.sizeMD, fontWeight: '600',
+    color: colors.accent, fontSize: font.sizeSM, fontWeight: '600',
     textAlign: 'center', marginTop: spacing.xl,
   },
 });

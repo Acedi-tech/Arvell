@@ -3,8 +3,9 @@ import { View, StyleSheet, Pressable, ScrollView, Alert, Image } from 'react-nat
 import { Text, TextInput } from '../components/AppText';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Svg, { Path } from 'react-native-svg';
-import { colors, spacing, radius, font } from '../theme';
-import { BackIcon, UserIcon, CameraIcon } from '../components/Icons';
+import { colors, spacing, font } from '../theme';
+import { UserIcon, CameraIcon } from '../components/Icons';
+import AuthHeader from '../components/AuthHeader';
 import KeyboardAware from '../components/KeyboardAware';
 import PhotoSourceSheet from '../components/PhotoSourceSheet';
 import ShieldIcon from '../components/ShieldIcon';
@@ -195,13 +196,7 @@ export default function ProfileSetupScreen({ navigation }) {
     <SafeAreaView style={styles.safe}>
       <KeyboardAware dismissOnTap={false}>
       {/* Шапка: назад слева, заголовок белым по центру — как на макете */}
-      <View style={styles.header}>
-        <Pressable hitSlop={10} accessibilityLabel="Назад" onPress={() => { if (!finishedRef.current) navigation.goBack(); }}>
-          <BackIcon />
-        </Pressable>
-        <Text style={styles.headerTitle}>Регистрация</Text>
-        <View style={{ width: 26 }} />
-      </View>
+      <AuthHeader title="Регистрация" onBack={() => { if (!finishedRef.current) navigation.goBack(); }} />
 
       <ScrollView
         ref={scrollRef}
@@ -245,7 +240,7 @@ export default function ProfileSetupScreen({ navigation }) {
               Отправили код на {pendingPhone}, чтобы подтвердить регистрацию продавца.
             </Text>
             <TextInput
-              style={[styles.input, { marginTop: spacing.sm, letterSpacing: 6, textAlign: 'center' }]}
+              style={[styles.input, styles.codeInput, sellerCode.length > 0 && styles.inputFilled]}
               placeholder="0000"
               placeholderTextColor={colors.textFaint}
               keyboardType="number-pad"
@@ -260,9 +255,9 @@ export default function ProfileSetupScreen({ navigation }) {
           </>
         ) : (
           <>
-            <Text style={styles.label}>Введите имя</Text>
+            <Text style={styles.label}>Имя</Text>
             <TextInput
-              style={styles.input}
+              style={[styles.input, !!name && styles.inputFilled]}
               placeholder="Введите имя"
               placeholderTextColor={colors.textFaint}
               value={name}
@@ -290,7 +285,7 @@ export default function ProfileSetupScreen({ navigation }) {
               <>
                 <Text style={[styles.label, { marginTop: spacing.lg }]}>Код приглашения</Text>
                 <TextInput
-                  style={styles.input}
+                  style={[styles.input, styles.inviteInput, !!invite && styles.inputFilled]}
                   placeholder="Код из приглашения ARVELL"
                   placeholderTextColor={colors.textFaint}
                   autoCapitalize="none"
@@ -306,8 +301,8 @@ export default function ProfileSetupScreen({ navigation }) {
 
                 <Text style={[styles.label, { marginTop: spacing.lg }]}>Название магазина</Text>
                 <TextInput
-                  style={styles.input}
-                  placeholder="Например, Alex Sneaker Shop"
+                  style={[styles.input, !!shopName && styles.inputFilled]}
+                  placeholder="Например, Archive Room"
                   placeholderTextColor={colors.textFaint}
                   value={shopName}
                   onChangeText={setShopName}
@@ -343,69 +338,66 @@ export default function ProfileSetupScreen({ navigation }) {
 
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.bg },
-  header: {
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-    paddingHorizontal: spacing.md, paddingVertical: spacing.sm,
-  },
-  // Белый жирный заголовок по центру — как на макете
-  headerTitle: { color: colors.text, fontSize: font.sizeMD, fontWeight: '700' },
-  body: { paddingHorizontal: spacing.lg, paddingBottom: spacing.xl },
-  title: { color: colors.text, fontSize: font.sizeXXL, fontWeight: '800', marginTop: spacing.sm },
-  sub: { color: colors.textMuted, fontSize: font.sizeMD, marginTop: spacing.sm },
+  body: { paddingHorizontal: spacing.lg, paddingBottom: spacing.xl, paddingTop: spacing.sm },
+  title: { color: colors.text, fontSize: 24, fontWeight: '800' },
+  sub: { color: colors.textMuted, fontSize: 15, marginTop: 10, lineHeight: 22 },
 
-  // Было marginTop: spacing.xl — просили поднять аватар выше на этом экране.
-  avatarWrap: { alignSelf: 'center', marginTop: spacing.sm, marginBottom: spacing.lg },
+  avatarWrap: { alignSelf: 'center', marginTop: spacing.lg, marginBottom: spacing.lg },
   avatar: {
-    width: 88, height: 88, borderRadius: 44,
+    width: 88, height: 88,
     backgroundColor: colors.surfaceAlt,
     alignItems: 'center', justifyContent: 'center',
   },
-  avatarImage: { width: 88, height: 88, borderRadius: 44 },
+  avatarImage: { width: 88, height: 88 },
   camBtn: {
     position: 'absolute', right: -2, bottom: -2,
-    width: 30, height: 30, borderRadius: 15,
+    width: 30, height: 30,
     backgroundColor: colors.accent,
     alignItems: 'center', justifyContent: 'center',
     borderWidth: 3, borderColor: colors.bg,
   },
 
-  label: { color: colors.textMuted, fontSize: font.sizeSM, fontWeight: '600', marginBottom: spacing.sm },
+  label: { color: colors.textSub, fontSize: 13, fontWeight: '600', marginBottom: spacing.sm, marginHorizontal: 2 },
   input: {
+    minHeight: 50,
     backgroundColor: colors.surface,
-    borderRadius: radius.md,
     borderWidth: 1, borderColor: colors.border,
-    color: colors.text, fontSize: font.sizeMD,
-    paddingHorizontal: spacing.md, paddingVertical: 14,
+    color: colors.text, fontSize: 15,
+    paddingHorizontal: spacing.md, paddingVertical: 12,
+    marginBottom: 18,
   },
-  error: { color: colors.danger, fontSize: font.sizeSM, marginTop: spacing.sm },
-  note: { color: colors.textFaint, fontSize: font.sizeSM, marginTop: spacing.sm, lineHeight: 19 },
+  inputFilled: { borderColor: colors.accent },
+  inviteInput: { letterSpacing: 2, fontWeight: '600', marginBottom: spacing.sm },
+  codeInput: { marginTop: spacing.sm, letterSpacing: 6, textAlign: 'center', fontSize: 22, fontWeight: '700' },
+  error: { color: colors.danger, fontSize: 13, marginTop: spacing.sm, lineHeight: 19 },
+  note: { color: colors.textMuted, fontSize: 12.5, marginTop: 0, marginBottom: spacing.md, lineHeight: 19, paddingHorizontal: 4 },
   backLink: {
     color: colors.accent, fontSize: font.sizeSM, fontWeight: '600',
-    marginTop: spacing.lg, textAlign: 'center',
+    marginTop: 18, textAlign: 'center',
   },
 
   role: {
-    flexDirection: 'row', alignItems: 'center', gap: spacing.md,
+    flexDirection: 'row', alignItems: 'center', gap: 14,
     backgroundColor: colors.surface,
-    borderRadius: radius.lg, borderWidth: 1.5, borderColor: 'transparent',
-    padding: spacing.md, marginBottom: spacing.sm,
+    borderWidth: 1.5, borderColor: colors.border,
+    paddingHorizontal: 15, paddingVertical: 13, marginBottom: 10,
   },
   roleActive: { borderColor: colors.accent },
   roleIcon: {
-    width: 44, height: 44, borderRadius: 22,
+    width: 42, height: 42,
     backgroundColor: colors.surfaceAlt,
     alignItems: 'center', justifyContent: 'center',
   },
   roleIconActive: { backgroundColor: colors.accent },
-  roleTitle: { color: colors.text, fontSize: font.sizeMD, fontWeight: '700' },
-  roleSub: { color: colors.textMuted, fontSize: font.sizeSM, marginTop: 2 },
+  roleTitle: { color: colors.text, fontSize: 15.5, fontWeight: '700' },
+  roleSub: { color: colors.textMuted, fontSize: 12.5, marginTop: 2 },
   radio: {
-    width: 22, height: 22, borderRadius: 11,
+    width: 24, height: 24,
     borderWidth: 2, borderColor: colors.border,
     alignItems: 'center', justifyContent: 'center',
   },
   radioActive: { borderColor: colors.accent },
-  radioDot: { width: 10, height: 10, borderRadius: 5, backgroundColor: colors.accent },
+  radioDot: { width: 12, height: 12, borderRadius: 6, backgroundColor: colors.accent },
 
-  footer: { paddingHorizontal: spacing.lg, paddingBottom: spacing.md, paddingTop: spacing.sm },
+  footer: { paddingHorizontal: spacing.lg, paddingBottom: spacing.lg, paddingTop: spacing.sm },
 });

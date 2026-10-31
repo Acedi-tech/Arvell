@@ -54,3 +54,25 @@ describe('ДИЗАЙН-СИСТЕМА', () => {
     expect(navigation.goBack).toHaveBeenCalled();
   });
 });
+
+describe('ВХОД — Editorial', () => {
+  const WelcomeScreen = require('../../src/screens/WelcomeScreen').default;
+
+  it('Заголовок говорит, зачем нужен вход; крестик закрывает окно', () => {
+    const navigation = createNavigation();
+    const root = { canGoBack: jest.fn(() => true), goBack: jest.fn() };
+    navigation.getParent = jest.fn(() => root);
+    render(<WelcomeScreen navigation={navigation} route={{ params: { reason: 'Войдите, чтобы видеть чаты' } }} />);
+    expect(screen.getByText('Войдите, чтобы видеть чаты')).toBeTruthy();
+    fireEvent.press(screen.getByLabelText('Закрыть'));
+    expect(root.goBack).toHaveBeenCalled();
+  });
+
+  it('Без причины — общий заголовок, без крестика на холодном старте', () => {
+    const navigation = createNavigation();
+    navigation.getParent = jest.fn(() => ({ canGoBack: () => false }));
+    render(<WelcomeScreen navigation={navigation} route={{}} />);
+    expect(screen.getByText('Войдите в ARVELL')).toBeTruthy();
+    expect(screen.queryByLabelText('Закрыть')).toBeNull();
+  });
+});

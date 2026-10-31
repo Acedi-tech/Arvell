@@ -40,7 +40,7 @@ tags: [manual, invite]
 # Enter закрывает клавиатуру однострочного поля; hideKeyboard жмёт
 # системный «Назад» и без клавиатуры (уводил с анкеты на S9, 21.10).
 - pressKey: Enter
-- tapOn: "Например, Alex Sneaker Shop"
+- tapOn: "Например, Archive Room"
 - inputText: "ТЕСТ QA магазин"
 # Enter закрывает клавиатуру однострочного поля; hideKeyboard жмёт
 # системный «Назад» и без клавиатуры (уводил с анкеты на S9, 21.10).

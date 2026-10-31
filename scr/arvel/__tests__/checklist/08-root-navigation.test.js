@@ -33,7 +33,8 @@ const tree = () => <NavigationContainer ref={navRef}><RootNavigator /></Navigati
 const renderRoot = () => render(tree());
 const finishSplash = () => fireEvent.press(screen.getByText('Splash'));
 
-beforeEach(() => resetContexts());
+beforeEach(() => { resetContexts(); jest.useFakeTimers(); });
+afterEach(() => { jest.useRealTimers(); });
 
 describe('Корневая навигация', () => {
   it('заставка держится, пока идёт проверка сессии', () => {
@@ -70,6 +71,9 @@ describe('Корневая навигация', () => {
     expect(navRef.getRootState().routes.map((r) => r.name)).toEqual(['Main', 'Auth']);
 
     act(() => { setAuth({ bootstrapping: false, isLoggedIn: true }); });
+    // Сначала экран «Готово!», через полторы секунды окно закрывается.
+    expect(screen.getByText('Готово!')).toBeTruthy();
+    act(() => { jest.advanceTimersByTime(1600); });
     // Нативная анимация закрытия в Jest не доигрывает, поэтому смотрим на
     // состояние навигатора, а не на то, что ещё смонтировано.
     expect(navRef.getCurrentRoute().name).toBe('Main');
@@ -92,6 +96,7 @@ describe('Корневая навигация', () => {
     expect(navRef.getRootState().routes.map((r) => r.name)).toEqual(['Auth']);
 
     act(() => { setAuth({ bootstrapping: false, isLoggedIn: true, pendingUser: null }); });
+    act(() => { jest.advanceTimersByTime(1600); });
     expect(navRef.getCurrentRoute().name).toBe('Main');
     expect(navRef.getRootState().routes.map((r) => r.name)).toEqual(['Main']);
   });

@@ -8,24 +8,34 @@ import ReviewsScreen from '../screens/ReviewsScreen';
 import WriteReviewScreen from '../screens/WriteReviewScreen';
 import DevComponentsScreen from '../screens/DevComponentsScreen';
 import AnimatedSplash from '../components/AnimatedSplash';
+import AuthSuccess from '../components/AuthSuccess';
 
 const Stack = createNativeStackNavigator();
 
 // Модалка авторизации: открывается поверх MainTabs, когда гость пытается
 // купить товар, зайти в чат или в профиль. Как только вход завершён
-// (isLoggedIn стал true), сама закрывается — пользователь возвращается туда,
-// откуда её открыл.
-function AuthModal({ navigation }) {
-  const { isLoggedIn } = useAuth();
+// (isLoggedIn стал true), показывает «Готово!» и через полторы секунды
+// закрывается сама — пользователь возвращается туда, откуда её открыл.
+export const AUTH_SUCCESS_MS = 1500;
+function AuthModal({ navigation, route }) {
+  const { isLoggedIn, user } = useAuth();
   useEffect(() => {
-    if (!isLoggedIn) return;
-    // Анкета, открытая на холодном старте (pendingUser), — первый экран стека:
-    // под ней нет MainTabs, и goBack() ничего не делал — человек оставался на
-    // «Расскажите о себе», хотя регистрация прошла (Galaxy S9, 21.10).
-    if (navigation.canGoBack()) navigation.goBack();
-    else navigation.reset({ index: 0, routes: [{ name: 'Main' }] });
+    if (!isLoggedIn) return undefined;
+    const t = setTimeout(() => {
+      // Анкета, открытая на холодном старте (pendingUser), — первый экран стека:
+      // под ней нет MainTabs, и goBack() ничего не делал — человек оставался на
+      // «Расскажите о себе», хотя регистрация прошла (Galaxy S9, 21.10).
+      if (navigation.canGoBack()) navigation.goBack();
+      else navigation.reset({ index: 0, routes: [{ name: 'Main' }] });
+    }, AUTH_SUCCESS_MS);
+    return () => clearTimeout(t);
   }, [isLoggedIn, navigation]);
-  return <AuthNavigator />;
+  return (
+    <>
+      <AuthNavigator reason={route?.params?.reason} />
+      {isLoggedIn && <AuthSuccess isSeller={user?.role === 'seller'} />}
+    </>
+  );
 }
 
 export default function RootNavigator() {
