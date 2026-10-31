@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>ARVELL — Editorial</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,400..900&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet"/>
+<style>
+  * { box-sizing: border-box; -webkit-font-smoothing: antialiased; }
+  html, body { margin:0; height:100%; }
+  body {
+    font-family: 'Archivo', -apple-system, BlinkMacSystemFont, 'SF Pro Display', sans-serif;
+    background: #050505;
+    display: flex; align-items: center; justify-content: center;
+    min-height: 100vh; padding: 24px;
+    
+  }
+  #root { display:flex; }
+
+  /* ---- iPhone frame ---- */
+  .phone {
+    width: 390px; height: 844px;
+    border-radius: 54px;
+    background: #0A0A0A;
+    padding: 11px;
+    box-shadow: 0 0 0 11px #1c1c1e, 0 0 0 13px #0a0a0a, 0 40px 90px rgba(0,0,0,.6);
+    position: relative;
+  }
+  .screen {
+    width: 100%; height: 100%;
+    border-radius: 44px;
+    overflow: hidden;
+    position: relative;
+  }
+  /* dynamic island */
+  .phone::after {
+    content: ''; position: absolute; top: 23px; left: 50%; transform: translateX(-50%);
+    width: 116px; height: 33px; background:#000; border-radius: 20px; z-index: 100; pointer-events: none;
+  }
+
+  .scroll::-webkit-scrollbar { width:0; height:0; }
+  .scroll { scrollbar-width: none; -ms-overflow-style: none; }
+  textarea { font-family: inherit; }
+  button { font-family: inherit; }
+  input::placeholder, textarea::placeholder { color: #6a6a6a; opacity: 1; }
+  @keyframes fade { from { opacity:0; transform: scale(.97); } to { opacity:1; transform:none; } }
+  @keyframes recpulse { 0%,100% { opacity:1; } 50% { opacity:.25; } }
+  @keyframes sheetUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
+  @keyframes slideInPage { from { opacity:0; transform: translateY(10px); } to { opacity:1; transform:none; } }
+  @keyframes slideIn { from { opacity:0; transform: translateX(14px); } to { opacity:1; transform:none; } }
+  @keyframes ringDraw { to { stroke-dashoffset: 0; } }
+  @keyframes popIn { to { transform: scale(1); } }
+  @keyframes checkDraw { to { stroke-dashoffset: 0; } }
+  @keyframes fadeUp { from { opacity:0; transform: translateY(8px); } to { opacity:1; transform:none; } }
+  @keyframes otpShake { 0%,100%{transform:none} 20%{transform:translateX(-8px)} 40%{transform:translateX(8px)} 60%{transform:translateX(-5px)} 80%{transform:translateX(5px)} }
+  @keyframes drawLeg { to { stroke-dashoffset: 0; } }
+  .screen > div[key] { animation: slideIn .22s ease; }
+
+  .phone { transform: scale(var(--s, 1)); transform-origin: center center; }
+</style>
+</head>
+<body>
+<div id="root"></div>
+
+<template id="__bundler_thumbnail">
+  <svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+    <rect width="100" height="100" fill="#0A0A0A"/>
+    <text x="50" y="58" font-family="Inter, sans-serif" font-size="15" font-weight="800" fill="#FFD700" text-anchor="middle" letter-spacing="1">ARVELL</text>
+  </svg>
+</template>
+
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+
+<script type="text/babel" src="shared.jsx?v=4"></script>
+<script type="text/babel" src="screens-a.jsx?v=4"></script>
+<script type="text/babel" src="screens-ed.jsx?v=4"></script>
+<script type="text/babel" src="screens-b.jsx?v=4"></script>
+<script type="text/babel" src="screens-c.jsx?v=4"></script>
+<script type="text/babel" src="auth.jsx?v=4"></script>
+<script type="text/babel" src="admin.jsx?v=4"></script>
+<script type="text/babel" src="v3-a.jsx?v=4"></script>
+<script type="text/babel" src="v3-b.jsx?v=4"></script>
+<script type="text/babel" src="v3-c.jsx?v=4"></script>
+<script type="text/babel" src="app.jsx?v=4"></script>
+
+<script>
+  // fit-to-viewport scaling — only shrink when the phone truly can't fit
+  function fit(){
+    const w = window.innerWidth, h = window.innerHeight;
+    if (w < 60 || h < 60) { return; } // layout not ready
+    const s = Math.min(1, (w-12)/412, (h-12)/866);
+    document.body.style.setProperty('--s', s.toFixed(4));
+  }
+  window.addEventListener('resize', fit);
+  window.addEventListener('load', fit);
+  fit();
+</script>
+</body>
+</html>

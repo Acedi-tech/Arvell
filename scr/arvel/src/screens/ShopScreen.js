@@ -4,7 +4,7 @@ import { Text } from '../components/AppText';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { colors, spacing, font } from '../theme';
 import { BackIcon, StarIcon } from '../components/Icons';
-import ProductCard from '../components/ProductCard';
+import ProductCard, { GRID_GAP } from '../components/ProductCard';
 import { listProducts } from '../api/products';
 import { reviewsCount } from '../utils/plural';
 
@@ -64,6 +64,7 @@ export default function ShopScreen({ navigation, route }) {
         data={products}
         keyExtractor={(item) => item.id}
         numColumns={2}
+        columnWrapperStyle={{ gap: GRID_GAP }}
         contentContainerStyle={styles.grid}
         showsVerticalScrollIndicator={false}
         renderItem={({ item }) => (
@@ -97,6 +98,6 @@ const styles = StyleSheet.create({
   ratingRow: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 2 },
   ratingText: { color: colors.textMuted, fontSize: font.sizeSM },
   ratingLink: { color: colors.accent, fontSize: font.sizeSM, fontWeight: '700' },
-  grid: { paddingHorizontal: spacing.sm, paddingTop: spacing.md, paddingBottom: spacing.xl },
+  grid: { paddingTop: spacing.md, paddingBottom: spacing.xl },
   empty: { color: colors.textMuted, textAlign: 'center', marginTop: spacing.xl },
 });

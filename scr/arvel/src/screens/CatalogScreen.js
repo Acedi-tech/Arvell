@@ -2,9 +2,11 @@ import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { View, FlatList, StyleSheet, Pressable, ActivityIndicator } from 'react-native';
 import { Text } from '../components/AppText';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { colors, spacing, radius, font } from '../theme';
+import { colors, spacing, font, type } from '../theme';
 import { SearchIcon } from '../components/Icons';
-import ProductCard from '../components/ProductCard';
+import ProductCard, { GRID_GAP } from '../components/ProductCard';
+import Header from '../components/Header';
+import Chip from '../components/Chip';
 import CatalogFiltersSheet, { EMPTY_FILTERS, SORT_OPTIONS, countActiveFilters } from '../components/CatalogFiltersSheet';
 import { listCategories, listBrands } from '../api/catalog';
 import { listProducts } from '../api/products';
@@ -85,10 +87,17 @@ export default function CatalogScreen({ navigation }) {
   const toggleBrand = (id) => setFilters((f) => ({ ...f, brandId: f.brandId === id ? null : id }));
 
   const activeCount = countActiveFilters(filters);
+  const anySelected = !!categoryId || activeCount > 0;
+  const resetAll = () => { setCategoryId(null); setSubcategoryId(null); setFilters(EMPTY_FILTERS); };
   const sortLabel = SORT_OPTIONS.find((o) => o.value === filters.sort)?.label;
 
-  const Header = (
+  const ListHeader = (
     <View>
+      <Pressable style={styles.searchRow} onPress={() => navigation.navigate('Search')}>
+        <SearchIcon size={19} color={colors.textMuted} />
+        <Text style={styles.searchPlaceholder}>Поиск в каталоге...</Text>
+      </Pressable>
+
       <Text style={styles.blockTitle}>Категории</Text>
       <View style={styles.catGrid}>
         {topCategories.map((cat) => {
@@ -99,7 +108,7 @@ export default function CatalogScreen({ navigation }) {
               style={[styles.catCard, active && styles.catCardActive]}
               onPress={() => toggleCategory(cat.id)}
             >
-              <Text style={styles.catTitle}>{cat.name}</Text>
+              <Text style={[styles.catTitle, active && styles.catTitleActive]}>{cat.name}</Text>
             </Pressable>
           );
         })}
@@ -107,61 +116,44 @@ export default function CatalogScreen({ navigation }) {
 
       {subcategories.length > 0 && (
         <View style={[styles.brandWrap, { marginTop: spacing.md }]}>
-          {subcategories.map((c) => {
-            const active = subcategoryId === c.id;
-            return (
-              <Pressable
-                key={c.id}
-                style={[styles.brandChip, active && styles.brandChipActive]}
-                onPress={() => toggleSubcategory(c.id)}
-              >
-                <Text style={[styles.brandText, active && styles.brandTextActive]}>{c.name}</Text>
-              </Pressable>
-            );
-          })}
+          {subcategories.map((c) => (
+            <Chip key={c.id} label={c.name} arrow={false} active={subcategoryId === c.id} onPress={() => toggleSubcategory(c.id)} />
+          ))}
         </View>
       )}
 
       <Text style={styles.blockTitle}>Бренды</Text>
       <View style={styles.brandWrap}>
-        {brands.map((b) => {
-          const active = filters.brandId === b.id;
-          return (
-            <Pressable
-              key={b.id}
-              style={[styles.brandChip, active && styles.brandChipActive]}
-              onPress={() => toggleBrand(b.id)}
-            >
-              <Text style={[styles.brandText, active && styles.brandTextActive]}>
-                {b.name}
-              </Text>
-            </Pressable>
-          );
-        })}
+        {brands.map((b) => (
+          <Chip key={b.id} label={b.name} active={filters.brandId === b.id} onPress={() => toggleBrand(b.id)} />
+        ))}
       </View>
 
-      <Pressable style={styles.filtersBtn} onPress={() => setFiltersOpen(true)}>
-        <Text style={styles.filtersText}>
-          Фильтры{activeCount ? ` · ${activeCount}` : ''}{sortLabel ? ` · ${sortLabel}` : ''}
-        </Text>
-      </Pressable>
+      <View style={styles.toolsRow}>
+        <Pressable style={styles.filtersBtn} onPress={() => setFiltersOpen(true)}>
+          <Text style={styles.filtersText}>
+            Фильтры{activeCount ? ` · ${activeCount}` : ''}{sortLabel ? ` · ${sortLabel}` : ''}
+          </Text>
+        </Pressable>
+        {anySelected && (
+          <Pressable hitSlop={8} onPress={resetAll}>
+            <Text style={styles.reset}>Сбросить</Text>
+          </Pressable>
+        )}
+      </View>
     </View>
   );
 
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
-      <Text style={styles.header}>Каталог</Text>
-
-      <Pressable style={styles.searchRow} onPress={() => navigation.navigate('Search')}>
-        <SearchIcon size={20} color={colors.textMuted} />
-        <Text style={styles.searchPlaceholder}>Поиск брендов...</Text>
-      </Pressable>
+      <Header title="Каталог" />
 
       <FlatList
         data={loading ? [] : products}
         keyExtractor={(item) => item.id}
         numColumns={2}
-        ListHeaderComponent={Header}
+        ListHeaderComponent={ListHeader}
+        columnWrapperStyle={{ gap: GRID_GAP }}
         contentContainerStyle={styles.grid}
         showsVerticalScrollIndicator={false}
         onEndReached={loadMore}
@@ -197,62 +189,50 @@ export default function CatalogScreen({ navigation }) {
 
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.bg },
-  header: {
-    color: colors.accent, fontSize: font.sizeLG, fontWeight: '800',
-    textAlign: 'center', paddingVertical: spacing.md,
-  },
   searchRow: {
+    height: 46,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: spacing.sm,
+    gap: 10,
     backgroundColor: colors.surface,
-    borderRadius: radius.lg,
-    marginHorizontal: spacing.lg,
-    marginBottom: spacing.md,
-    paddingHorizontal: spacing.lg,
-    paddingVertical: 14,
+    borderWidth: 1, borderColor: colors.border,
+    marginHorizontal: spacing.md,
+    marginTop: spacing.md,
+    marginBottom: 20,
+    paddingHorizontal: 14,
   },
-  searchPlaceholder: { color: colors.textMuted, fontSize: font.sizeMD },
-  blockTitle: {
-    color: colors.text, fontSize: font.sizeLG, fontWeight: '800',
-    paddingHorizontal: spacing.sm, marginTop: spacing.sm, marginBottom: spacing.md,
-  },
+  searchPlaceholder: { color: colors.textFaint, fontSize: 15 },
+  blockTitle: { ...type.mono, fontSize: 10.5, color: colors.textMuted, paddingHorizontal: spacing.md, marginBottom: 10 },
 
   catGrid: {
     flexDirection: 'row', flexWrap: 'wrap',
-    gap: spacing.md, paddingHorizontal: spacing.sm,
+    gap: 2, marginBottom: 22,
   },
   catCard: {
-    flexBasis: '47%', flexGrow: 1,
+    flexBasis: '49.5%', flexGrow: 1,
     backgroundColor: colors.surface,
-    borderRadius: radius.lg,
-    borderWidth: 1.5, borderColor: colors.border,
-    paddingHorizontal: spacing.md, paddingVertical: spacing.md,
+    paddingHorizontal: spacing.md, paddingVertical: 18,
   },
-  catCardActive: { borderColor: colors.accent },
+  catCardActive: { backgroundColor: colors.accent },
   catTitle: { color: colors.text, fontSize: font.sizeMD, fontWeight: '700' },
+  catTitleActive: { color: colors.accentText },
 
   brandWrap: {
     flexDirection: 'row', flexWrap: 'wrap',
-    gap: spacing.sm, paddingHorizontal: spacing.sm, marginBottom: spacing.md,
+    gap: spacing.sm, paddingHorizontal: spacing.md, marginBottom: 18,
   },
-  brandChip: {
-    paddingHorizontal: spacing.lg, paddingVertical: spacing.sm + 2,
-    borderRadius: radius.pill,
-    backgroundColor: colors.chipInactive,
-    borderWidth: 1.5, borderColor: 'transparent',
-  },
-  brandChipActive: { backgroundColor: 'transparent', borderColor: colors.accent },
-  brandText: { color: colors.text, fontSize: font.sizeMD, fontWeight: '600' },
-  brandTextActive: { color: colors.accent },
 
+  toolsRow: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    paddingHorizontal: spacing.md, marginBottom: spacing.md,
+  },
   filtersBtn: {
-    alignSelf: 'flex-start', marginHorizontal: spacing.sm, marginBottom: spacing.md,
-    paddingHorizontal: spacing.lg, paddingVertical: spacing.sm + 2,
-    borderRadius: radius.pill, borderWidth: 1.5, borderColor: colors.accent,
+    height: 30, justifyContent: 'center', paddingHorizontal: 12,
+    borderWidth: 1, borderColor: colors.accent,
   },
-  filtersText: { color: colors.accent, fontSize: font.sizeMD, fontWeight: '700' },
+  filtersText: { ...type.mono, fontSize: 11.5, color: colors.accent },
+  reset: { color: colors.accent, fontSize: 13, fontWeight: '600' },
 
-  grid: { paddingHorizontal: spacing.sm, paddingBottom: spacing.xl },
+  grid: { paddingBottom: spacing.xl },
   empty: { color: colors.textMuted, textAlign: 'center', marginTop: spacing.xl },
 });

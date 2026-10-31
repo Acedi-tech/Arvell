@@ -7,7 +7,7 @@ import { colors, spacing, radius, font } from '../theme';
 import { resolveMediaUrl } from '../utils/media';
 import { SearchIcon, ClockIcon, CloseIcon, TeeIcon } from '../components/Icons';
 import RemoteImage from '../components/RemoteImage';
-import ProductCard from '../components/ProductCard';
+import ProductCard, { GRID_GAP } from '../components/ProductCard';
 import { listProducts } from '../api/products';
 import { listBrands } from '../api/catalog';
 import { useProducts } from '../context/ProductsContext';
@@ -148,6 +148,7 @@ export default function SearchScreen({ navigation }) {
           data={results}
           keyExtractor={(item) => item.id}
           numColumns={2}
+          columnWrapperStyle={{ gap: GRID_GAP }}
           contentContainerStyle={styles.grid}
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
@@ -280,6 +281,6 @@ const styles = StyleSheet.create({
   forYouBrand: { color: colors.text, fontSize: font.sizeMD, fontWeight: '700', marginTop: spacing.sm },
   forYouPrice: { color: colors.accent, fontSize: font.sizeMD, fontWeight: '800', marginTop: 2 },
 
-  grid: { paddingHorizontal: spacing.sm, paddingBottom: spacing.xl },
+  grid: { paddingBottom: spacing.xl },
   empty: { color: colors.textMuted, textAlign: 'center', marginTop: spacing.xl },
 });

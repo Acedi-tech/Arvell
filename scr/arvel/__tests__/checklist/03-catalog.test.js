@@ -109,6 +109,31 @@ forEachRole(({ t }) => {
         expect(products.refresh).toHaveBeenCalled();
       });
 
+      it('Feed: лупа раскрывает поиск, лента фильтруется на месте', async () => {
+        setProducts({ products: [nike, adidas] });
+        listProducts.mockResolvedValue({ data: [puma], page: { has_more: false } });
+        render(<FeedScreen navigation={navigation} />);
+        expect(screen.getByText('Популярные запросы')).toBeTruthy();
+        fireEvent.press(screen.getByLabelText('Поиск'));
+        fireEvent.changeText(screen.getByPlaceholderText('Поиск брендов...'), 'Puma');
+        expect(await screen.findByText('Suede')).toBeTruthy();
+        expect(listProducts).toHaveBeenLastCalledWith({ q: 'Puma', limit: 40 });
+        // Пока идёт поиск, баннеры и чипсы скрыты.
+        expect(screen.queryByText('Популярные запросы')).toBeNull();
+        expect(navigation.navigate).not.toHaveBeenCalled();
+      });
+
+      it('Feed: чипс бренда ищет его, «Все» открывает каталог', async () => {
+        setProducts({ products: [nike] });
+        listProducts.mockResolvedValue({ data: [nike], page: { has_more: false } });
+        render(<FeedScreen navigation={navigation} />);
+        fireEvent.press(screen.getByText('Все ↗'));
+        expect(navigation.getParent().navigate).toHaveBeenCalledWith('Catalog');
+        fireEvent.press(screen.getByText('Stone Island ↗'));
+        await waitFor(() => expect(listProducts).toHaveBeenLastCalledWith({ q: 'Stone Island', limit: 40 }));
+        expect(screen.getByDisplayValue('Stone Island')).toBeTruthy();
+      });
+
       it('Feed: пустая лента', () => {
         render(<FeedScreen navigation={navigation} />);
         expect(screen.getByText('Пока нет товаров')).toBeTruthy();
@@ -131,7 +156,7 @@ forEachRole(({ t }) => {
       it('Catalog: строка поиска -> Search', async () => {
         render(<CatalogScreen navigation={navigation} />);
         await screen.findByText('Air Max 90');
-        fireEvent.press(screen.getByText('Поиск брендов...'));
+        fireEvent.press(screen.getByText('Поиск в каталоге...'));
         expect(navigation.navigate).toHaveBeenCalledWith('Search');
       });
 
@@ -162,13 +187,13 @@ forEachRole(({ t }) => {
       it(t('Catalog: чип бренда (фильтр на сервере)', 'Catalog: чип бренда'), async () => {
         render(<CatalogScreen navigation={navigation} />);
         await screen.findByText('Air Max 90');
-        // Первый «Nike» — чип в шапке, второй — бренд на карточке товара.
-        fireEvent.press(screen.getAllByText('Nike')[0]);
+        // Чип бренда в шапке подписан со стрелкой ↗.
+        fireEvent.press(screen.getByText('Nike ↗'));
         await waitFor(() => expect(listProducts).toHaveBeenLastCalledWith({ categoryId: null, limit: 20, brandId: 'b1' }));
         // Второй бренд заменяет первый: сервер принимает один brand_id.
-        fireEvent.press(screen.getAllByText('Adidas')[0]);
+        fireEvent.press(screen.getByText('Adidas ↗'));
         await waitFor(() => expect(listProducts).toHaveBeenLastCalledWith({ categoryId: null, limit: 20, brandId: 'b2' }));
-        fireEvent.press(screen.getAllByText('Adidas')[0]);
+        fireEvent.press(screen.getByText('Adidas ↗'));
         await waitFor(() => expect(listProducts).toHaveBeenLastCalledWith({ categoryId: null, limit: 20 }));
       });
 
@@ -206,8 +231,20 @@ forEachRole(({ t }) => {
         fireEvent.press(screen.getByText('Показать'));
         await waitFor(() => expect(listProducts).toHaveBeenLastCalledWith({ categoryId: null, limit: 20, color: 'black' }));
         fireEvent.press(screen.getByText('Фильтры · 1'));
-        fireEvent.press(screen.getByText('Сбросить'));
+        // «Сбросить» есть и на самом экране, и в окне фильтров — жмём в окне (оно отрисовано последним).
+        fireEvent.press(screen.getAllByText('Сбросить').pop());
         fireEvent.press(screen.getByText('Показать'));
+        await waitFor(() => expect(listProducts).toHaveBeenLastCalledWith({ categoryId: null, limit: 20 }));
+      });
+
+      it('Catalog: «Сбросить» на экране снимает категорию и бренд', async () => {
+        render(<CatalogScreen navigation={navigation} />);
+        await screen.findByText('Air Max 90');
+        expect(screen.queryByText('Сбросить')).toBeNull();
+        fireEvent.press(screen.getByText('Обувь'));
+        fireEvent.press(screen.getByText('Nike ↗'));
+        await waitFor(() => expect(listProducts).toHaveBeenLastCalledWith({ categoryId: 'c1', limit: 20, brandId: 'b1' }));
+        fireEvent.press(screen.getByText('Сбросить'));
         await waitFor(() => expect(listProducts).toHaveBeenLastCalledWith({ categoryId: null, limit: 20 }));
       });
 

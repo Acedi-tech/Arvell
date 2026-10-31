@@ -4,7 +4,7 @@ import { Text } from '../components/AppText';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { colors, spacing, radius, font } from '../theme';
 import { HeartIcon } from '../components/Icons';
-import ProductCard from '../components/ProductCard';
+import ProductCard, { GRID_GAP } from '../components/ProductCard';
 import { useFavorites } from '../context/FavoritesContext';
 
 export default function FavoritesScreen({ navigation }) {
@@ -38,6 +38,7 @@ export default function FavoritesScreen({ navigation }) {
           data={liked}
           keyExtractor={(item) => item.id}
           numColumns={2}
+          columnWrapperStyle={{ gap: GRID_GAP }}
           contentContainerStyle={styles.list}
           showsVerticalScrollIndicator={false}
           renderItem={({ item }) => (
@@ -65,7 +66,7 @@ const styles = StyleSheet.create({
     minWidth: 22, height: 22, borderRadius: 11,
     textAlign: 'center', lineHeight: 22, paddingHorizontal: 6, overflow: 'hidden',
   },
-  list: { paddingHorizontal: spacing.sm, paddingBottom: spacing.xl },
+  list: { paddingBottom: spacing.xl },
 
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: spacing.xl },
   emptyCircle: {
