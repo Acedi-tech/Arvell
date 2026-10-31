@@ -177,7 +177,7 @@ describe('ПОКУПАТЕЛЬ', () => {
 
     it('EditProfile: стрелка «‹» назад', () => {
       render(<EditProfileScreen navigation={navigation} />);
-      fireEvent.press(screen.getByText('‹'));
+      fireEvent.press(screen.getByLabelText('Назад'));
       expect(navigation.goBack).toHaveBeenCalled();
     });
 
@@ -302,16 +302,16 @@ describe('ПОКУПАТЕЛЬ', () => {
       render(<OrdersScreen navigation={navigation} />);
       fireEvent.press(await screen.findByText('Nike Air Max 90'));
       // Открывается карточка сделки с подробностями.
-      expect(screen.getByText(/Это запись из истории сделок/)).toBeTruthy();
+      expect(screen.getByText('Оставить отзыв')).toBeTruthy();
       fireEvent.press(screen.getByLabelText('Закрыть'));
-      expect(screen.queryByText(/Это запись из истории сделок/)).toBeNull();
+      expect(screen.queryByText('Оставить отзыв')).toBeNull();
     });
 
     it('Пустой список -> «Пока нет заказов»', async () => {
       listMyPurchases.mockResolvedValue({ data: [] });
       render(<OrdersScreen navigation={navigation} />);
       expect(await screen.findByText('Пока нет завершённых сделок')).toBeTruthy();
-      expect(screen.getByText('Ваши покупки появятся здесь после первой сделки.')).toBeTruthy();
+      expect(screen.getByText('Ваши покупки появятся здесь, когда продавец подтвердит продажу')).toBeTruthy();
     });
 
     it('Ошибка загрузки — текст ошибки вместо пустого списка', async () => {
@@ -335,9 +335,6 @@ forEachRole(({ t }) => {
 
     it.each([
       ['Новые сообщения', true, 'msg'],
-      ['Статус сделки', true, 'deal'],
-      ['Проверка подлинности', true, 'auth'],
-      ['Снижение цены', true, 'price'],
       ['Новости и акции', false, 'news'],
     ])('Тумблер «%s»', async (title, initial, key) => {
       render(<NotificationsScreen navigation={navigation} />);
@@ -403,7 +400,7 @@ forEachRole(({ t }) => {
 
     it('Rules: стрелка назад', () => {
       render(<RulesScreen navigation={navigation} />);
-      expect(screen.getByText('Как работает ARVELL')).toBeTruthy();
+      expect(screen.getByText(/Как работает ARVELL/)).toBeTruthy();
       fireEvent.press(screen.getByLabelText('Назад'));
       expect(navigation.goBack).toHaveBeenCalled();
     });

@@ -210,7 +210,7 @@ describe('ОТЗЫВЫ', () => {
       render(<OrdersScreen navigation={navigation} />);
       await waitFor(() => expect(reviewsApi.listMyReviews).toHaveBeenCalled());
       fireEvent.press(await screen.findByText('Nike Air Max 90'));
-      expect(await screen.findByText('Вы уже оставили отзыв на эту покупку')).toBeTruthy();
+      expect(await screen.findByText('✓ Вы уже оставили отзыв на эту покупку')).toBeTruthy();
       expect(screen.queryByText('Оставить отзыв')).toBeNull();
     });
   });

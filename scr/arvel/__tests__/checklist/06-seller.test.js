@@ -14,7 +14,7 @@ jest.mock('../../src/context/MyListingsContext', () => require('../helpers/mockC
 jest.mock('../../src/api/media', () => ({ uploadImage: jest.fn() }));
 jest.mock('../../src/api/shops', () => ({ updateMyShop: jest.fn(), getMyShop: jest.fn() }));
 jest.mock('../../src/api/catalog', () => ({ listCategories: jest.fn(), listBrands: jest.fn() }));
-jest.mock('../../src/api/purchases', () => ({ listMyPurchases: jest.fn(), listMySales: jest.fn() }));
+jest.mock('../../src/api/purchases', () => ({ listMyPurchases: jest.fn(async () => ({ data: [] })), listMySales: jest.fn(async () => ({ data: [] })) }));
 jest.mock('../../src/api/products', () => ({ createProduct: jest.fn(), listProducts: jest.fn() }));
 jest.mock('../../src/utils/imageUpload', () => ({
   ...jest.requireActual('../../src/utils/imageUpload'),
@@ -25,7 +25,7 @@ const { createNavigation } = require('../helpers/navMock');
 const { setAuth, setMyListings, setConfig, resetContexts } = require('../helpers/mockContexts');
 const { getImage, queryImage } = require('../helpers/queries');
 const { uploadImage } = require('../../src/api/media');
-const { updateMyShop } = require('../../src/api/shops');
+const { updateMyShop, getMyShop } = require('../../src/api/shops');
 const { listCategories, listBrands } = require('../../src/api/catalog');
 const { createProduct } = require('../../src/api/products');
 
@@ -85,7 +85,7 @@ describe('ПРОДАВЕЦ', () => {
       setMyListings({ items: [{ id: 'a' }, { id: 'b' }, { id: 'c' }] });
       renderAccount();
       expect(screen.getByText('3')).toBeTruthy();
-      fireEvent.press(screen.getByText('Мои объявления'));
+      fireEvent.press(screen.getByText('Объявления'));
       expect(navigation.navigate).toHaveBeenCalledWith('MyListings');
     });
 
@@ -136,6 +136,18 @@ describe('ПРОДАВЕЦ', () => {
         fireEvent.press(screen.getByText('Сохранить'));
         await waitFor(() => expect(updateMyShop).toHaveBeenCalledWith({ profile_pic_url: '/media/files/logo.jpg' }));
         expect(auth.updateProfile).toHaveBeenCalledWith({ display_name: 'Алекс', profile_pic_url: '/media/files/logo.jpg' });
+      });
+
+      it('EditProfile: «Название магазина» и «О магазине» сохраняются в магазин', async () => {
+        const auth = setAuth({ user: seller });
+        getMyShop.mockResolvedValueOnce({ shop_name: 'Alex Shop', description: '' });
+        render(<EditProfileScreen navigation={navigation} />);
+        await waitFor(() => expect(screen.getByDisplayValue('Alex Shop')).toBeTruthy());
+        fireEvent.changeText(screen.getByDisplayValue('Alex Shop'), 'Archive Room');
+        fireEvent.changeText(screen.getByPlaceholderText('Расскажите, что вы продаёте и где удобно встретиться'), 'Встречи у м. Тверская');
+        fireEvent.press(screen.getByText('Сохранить'));
+        await waitFor(() => expect(updateMyShop).toHaveBeenCalledWith({ shop_name: 'Archive Room', description: 'Встречи у м. Тверская' }));
+        expect(auth.updateProfile).toHaveBeenCalledWith({ display_name: 'Алекс' });
       });
 
       it('EditProfile: поле «Имя», кнопка «Сохранить»', async () => {
@@ -606,10 +618,12 @@ describe('ПРОДАВЕЦ', () => {
 
     it('Строки сделок (проверить кликабельность)', async () => {
       render(<OrdersScreen navigation={navigation} />);
-      expect(screen.getByText('Завершённые продажи')).toBeTruthy();
-      fireEvent.press(await screen.findByText('Carhartt WIP Футболка'));
+      expect(screen.getByText('Подтверждённые продажи')).toBeTruthy();
+      expect(await screen.findByText('Carhartt WIP Футболка')).toBeTruthy();
       expect(screen.getAllByText(/^Продажа · /).length).toBeGreaterThanOrEqual(2);
-      expect(screen.getByText(/Это запись из истории сделок/)).toBeTruthy();
+      // Продавцу оставлять отзыв не на что — строки продаж не открываются.
+      fireEvent.press(screen.getByText('Carhartt WIP Футболка'));
+      expect(screen.queryByText('Оставить отзыв')).toBeNull();
       // Продавцу — его подтверждения продаж, а не покупки.
       expect(listMySales).toHaveBeenCalledWith({ limit: 50 });
       expect(listMyPurchases).not.toHaveBeenCalled();
@@ -618,7 +632,7 @@ describe('ПРОДАВЕЦ', () => {
     it('Пустой список -> «Пока нет продаж»', async () => {
       listMySales.mockResolvedValue({ data: [] });
       render(<OrdersScreen navigation={navigation} />);
-      expect(await screen.findByText('Пока нет завершённых продаж')).toBeTruthy();
+      expect(await screen.findByText('Пока нет продаж')).toBeTruthy();
     });
   });
 });

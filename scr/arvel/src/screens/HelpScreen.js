@@ -3,8 +3,9 @@ import React, { useState } from 'react';
 import { View, ScrollView, Pressable, StyleSheet } from 'react-native';
 import { Text } from '../components/AppText';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { colors, spacing, radius, font } from '../theme';
-import { BackIcon, ChevronRight } from '../components/Icons';
+import { colors, spacing, type } from '../theme';
+import ChevronDown from '../components/ChevronDown';
+import Header from '../components/Header';
 
 const FAQ = [
   { q: 'Товары на ARVELL проверены на подлинность?', a: 'Да. Каждый товар на ARVELL проходит проверку подлинности, отдельно ничего делать не нужно. Состояние вещи всё равно осмотрите при встрече.' },
@@ -18,10 +19,10 @@ const FAQ = [
 function FaqItem({ item, open, onToggle, last }) {
   return (
     <View style={[!last && styles.faqBorder]}>
-      <Pressable style={styles.faqHead} onPress={onToggle}>
+      <Pressable style={styles.faqHead} onPress={onToggle} accessibilityRole="button" accessibilityState={{ expanded: open }}>
         <Text style={styles.faqQ}>{item.q}</Text>
         <View style={open && styles.chevronOpen}>
-          <ChevronRight size={20} />
+          <ChevronDown size={18} color={open ? colors.accent : colors.textMuted} />
         </View>
       </Pressable>
       {open && <Text style={styles.faqA}>{item.a}</Text>}
@@ -34,13 +35,8 @@ export default function HelpScreen({ navigation }) {
 
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
-      <View style={styles.header}>
-        <Pressable hitSlop={10} accessibilityLabel="Назад" onPress={() => navigation.goBack()}><BackIcon size={26} /></Pressable>
-        <Text style={styles.headerTitle}>Помощь</Text>
-        <View style={{ width: 26 }} />
-      </View>
-
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: spacing.xl }}>
+      <Header title="Помощь" onBack={() => navigation.goBack()} />
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.content}>
         <Text style={styles.section}>Частые вопросы</Text>
         <View style={styles.card}>
           {FAQ.map((item, i) => (
@@ -53,7 +49,6 @@ export default function HelpScreen({ navigation }) {
             />
           ))}
         </View>
-
       </ScrollView>
     </SafeAreaView>
   );
@@ -61,17 +56,12 @@ export default function HelpScreen({ navigation }) {
 
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.bg },
-  header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: spacing.lg, paddingVertical: spacing.md },
-  headerTitle: { color: colors.text, fontSize: font.sizeLG, fontWeight: '800' },
-  section: { color: colors.text, fontSize: font.sizeLG, fontWeight: '800', paddingHorizontal: spacing.lg, marginTop: spacing.lg, marginBottom: spacing.md },
-  card: { marginHorizontal: spacing.lg, backgroundColor: colors.surface, borderRadius: radius.lg, overflow: 'hidden' },
+  content: { padding: spacing.md, paddingBottom: spacing.xl },
+  section: { ...type.mono, fontSize: 10.5, color: colors.textMuted, marginBottom: spacing.sm },
+  card: { borderWidth: 1, borderColor: colors.border },
   faqBorder: { borderBottomWidth: 1, borderBottomColor: colors.border },
-  faqHead: { flexDirection: 'row', alignItems: 'center', padding: spacing.md, gap: spacing.sm },
-  chevronOpen: { transform: [{ rotate: '90deg' }] },
-  faqQ: { flex: 1, color: colors.text, fontSize: font.sizeMD, fontWeight: '700', lineHeight: 22 },
-  faqA: { color: colors.textMuted, fontSize: font.sizeMD, lineHeight: 22, paddingHorizontal: spacing.md, paddingBottom: spacing.md, marginTop: -4 },
-  supportRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, padding: spacing.md },
-  supportIcon: { width: 40, height: 40, borderRadius: 20, backgroundColor: colors.accentDim, alignItems: 'center', justifyContent: 'center' },
-  supportTitle: { color: colors.text, fontSize: font.sizeMD, fontWeight: '700' },
-  supportSub: { color: colors.textMuted, fontSize: font.sizeSM, marginTop: 2 },
+  faqHead: { flexDirection: 'row', alignItems: 'center', padding: 14, gap: 10 },
+  chevronOpen: { transform: [{ rotate: '180deg' }] },
+  faqQ: { flex: 1, color: colors.text, fontSize: 14.5, fontWeight: '600', lineHeight: 20 },
+  faqA: { color: colors.textSub, fontSize: 13.5, lineHeight: 21, paddingHorizontal: 14, paddingBottom: 14 },
 });

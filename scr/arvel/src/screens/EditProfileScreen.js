@@ -1,17 +1,20 @@
 // Экран редактирования профиля.
 import React, { useEffect, useRef, useState } from 'react';
-import { View, TouchableOpacity, ScrollView, KeyboardAvoidingView, Platform, StyleSheet, Alert, Image } from 'react-native';
+import { View, Pressable, ScrollView, KeyboardAvoidingView, Platform, StyleSheet, Alert } from 'react-native';
 import { Text, TextInput } from '../components/AppText';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { colors, spacing, radius } from '../theme';
+import { colors, spacing, type } from '../theme';
 import { useAuth, isPlaceholderName } from '../context/AuthContext';
 import { useAppConfig } from '../context/AppConfigContext';
 import { uploadImage } from '../api/media';
-import { updateMyShop } from '../api/shops';
+import { updateMyShop, getMyShop } from '../api/shops';
 import { toUploadAsset, prepareForUpload } from '../utils/imageUpload';
 import { resolveMediaUrl } from '../utils/media';
 import PhotoSourceSheet from '../components/PhotoSourceSheet';
 import ConfirmDialog from '../components/ConfirmDialog';
+import Header from '../components/Header';
+import Avatar from '../components/Avatar';
+import Button from '../components/Button';
 
 export default function EditProfileScreen({ navigation }) {
   const { user, updateProfile } = useAuth();
@@ -28,11 +31,29 @@ export default function EditProfileScreen({ navigation }) {
   // Уход с экрана, отложенный до ответа в диалоге «Сохранить изменения?».
   const [pendingLeave, setPendingLeave] = useState(null);
 
-  const initial = nickname.trim().charAt(0).toUpperCase() || 'A';
   const avatarUri = newAvatar?.uri || resolveMediaUrl(user?.profile_pic_url);
   const isSeller = user?.role === 'seller';
-  const canSave = nickname.trim().length > 0;
-  const dirty = nickname.trim() !== initialNickname.trim() || !!newAvatar;
+
+  // Продавцу — ещё название магазина и «О магазине» (PATCH /me/shop).
+  const [shopInit, setShopInit] = useState({ name: '', about: '' });
+  const [shopName, setShopName] = useState('');
+  const [about, setAbout] = useState('');
+  useEffect(() => {
+    if (!isSeller) return undefined;
+    let alive = true;
+    Promise.resolve(getMyShop?.()).then((shop) => {
+      if (!alive || !shop) return;
+      const init = { name: shop.shop_name || '', about: shop.description || '' };
+      setShopInit(init);
+      setShopName(init.name);
+      setAbout(init.about);
+    }).catch(() => {});
+    return () => { alive = false; };
+  }, [isSeller]);
+  const shopDirty = isSeller && (shopName.trim() !== shopInit.name.trim() || about.trim() !== shopInit.about.trim());
+
+  const canSave = nickname.trim().length > 0 && (!isSeller || !shopDirty || shopName.trim().length > 0);
+  const dirty = nickname.trim() !== initialNickname.trim() || !!newAvatar || shopDirty;
 
   // Выход «Назад» (кнопка, жест, системная кнопка Android) с несохранёнными
   // правками — сначала спрашиваем, сохранить ли их.
@@ -63,7 +84,13 @@ export default function EditProfileScreen({ navigation }) {
       await updateProfile(patch);
       // Продавцу это же фото показываем как логотип магазина (seller.profile_pic_url
       // на карточке товара берётся из магазина, а не из профиля).
-      if (profilePicUrl && isSeller) await updateMyShop({ profile_pic_url: profilePicUrl });
+      const shopPatch = {};
+      if (profilePicUrl && isSeller) shopPatch.profile_pic_url = profilePicUrl;
+      if (shopDirty) {
+        shopPatch.shop_name = shopName.trim();
+        shopPatch.description = about.trim();
+      }
+      if (Object.keys(shopPatch).length) await updateMyShop(shopPatch);
       return true;
     } catch (e) {
       Alert.alert('Не удалось сохранить', e.message || 'Попробуйте ещё раз.');
@@ -103,62 +130,72 @@ export default function EditProfileScreen({ navigation }) {
 
   return (
     <SafeAreaView style={styles.screen} edges={['top']}>
+      <Header title="Редактирование" onBack={() => navigation.goBack()} />
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1 }}>
-        <View style={styles.header}>
-          <TouchableOpacity onPress={() => navigation.goBack()} style={styles.back} accessibilityLabel="Назад">
-            <Text style={styles.backText}>‹</Text>
-          </TouchableOpacity>
-          <Text style={styles.headerTitle}>Редактирование</Text>
-          <View style={styles.back} />
-        </View>
-
         <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
           <View style={styles.avatarBlock}>
-            <TouchableOpacity style={styles.avatar} activeOpacity={0.8} accessibilityLabel="Изменить фото профиля" onPress={() => setSheetVisible(true)}>
-              {avatarUri ? (
-                <Image source={{ uri: avatarUri }} style={styles.avatarImage} />
-              ) : (
-                <Text style={styles.avatarText}>{initial}</Text>
-              )}
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.cameraBadge} onPress={() => setSheetVisible(true)}>
-              <Text style={styles.cameraIcon}>📷</Text>
-            </TouchableOpacity>
+            <Pressable accessibilityLabel="Изменить фото профиля" onPress={() => setSheetVisible(true)}>
+              <Avatar uri={avatarUri} name={nickname || user?.name || '?'} size={88} />
+            </Pressable>
+            <Pressable hitSlop={8} onPress={() => setSheetVisible(true)}>
+              <Text style={styles.changePhoto}>Изменить фото</Text>
+            </Pressable>
           </View>
 
-          <Text style={styles.label}>Никнейм</Text>
+          <Text style={styles.label}>Имя</Text>
           <TextInput
-            style={[styles.input, styles.inputActive]}
+            style={[styles.input, nickname.trim() !== initialNickname.trim() && styles.inputActive]}
             value={nickname}
             onChangeText={setNickname}
             placeholder="Придумайте никнейм"
             autoCapitalize="none"
             autoCorrect={false}
-            placeholderTextColor="rgba(255,255,255,0.4)"
+            placeholderTextColor={colors.textFaint}
+            selectionColor={colors.accent}
           />
 
           <Text style={styles.label}>Телефон</Text>
           <View style={styles.phoneRow}>
             <Text style={styles.phoneText}>{user?.phone || '—'}</Text>
-            <Text style={styles.check}>✓</Text>
+            <Text style={styles.verified}>✓ Подтверждён</Text>
           </View>
+          <Text style={styles.notice}>
+            Номер телефона подтверждён и не может быть изменён здесь. Чтобы сменить номер — обратитесь в поддержку.
+          </Text>
 
-          <View style={styles.notice}>
-            <Text style={styles.noticeIcon}>🛡</Text>
-            <Text style={styles.noticeText}>
-              Номер телефона подтверждён и не может быть изменён здесь. Чтобы сменить номер — обратитесь в поддержку.
-            </Text>
-          </View>
+          {isSeller && (
+            <>
+              <Text style={styles.label}>Название магазина</Text>
+              <TextInput
+                style={[styles.input, shopName.trim() !== shopInit.name.trim() && styles.inputActive]}
+                value={shopName}
+                onChangeText={setShopName}
+                placeholder="Например, Archive Room"
+                placeholderTextColor={colors.textFaint}
+                selectionColor={colors.accent}
+              />
+              <Text style={styles.label}>О магазине</Text>
+              <TextInput
+                style={[styles.input, styles.multiline, about.trim() !== shopInit.about.trim() && styles.inputActive]}
+                value={about}
+                onChangeText={setAbout}
+                placeholder="Расскажите, что вы продаёте и где удобно встретиться"
+                placeholderTextColor={colors.textFaint}
+                selectionColor={colors.accent}
+                multiline
+                textAlignVertical="top"
+                maxLength={1000}
+              />
+            </>
+          )}
         </ScrollView>
 
         <View style={styles.footer}>
-          <TouchableOpacity
-            style={[styles.saveButton, saving && styles.saveButtonDisabled]}
+          <Button
+            title={saving ? 'Сохранение...' : 'Сохранить'}
             onPress={onSave}
-            disabled={saving || !canSave}
-          >
-            <Text style={styles.saveText}>{saving ? 'Сохранение...' : 'Сохранить'}</Text>
-          </TouchableOpacity>
+            disabled={saving || !canSave || !dirty}
+          />
         </View>
       </KeyboardAvoidingView>
 
@@ -186,28 +223,22 @@ export default function EditProfileScreen({ navigation }) {
 
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.bg },
-  header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: spacing.md, paddingVertical: 8 },
-  back: { width: 40, height: 40, justifyContent: 'center', alignItems: 'center' },
-  backText: { color: colors.text, fontSize: 34, lineHeight: 34 },
-  headerTitle: { color: colors.text, fontSize: 20, fontWeight: '700' },
-  content: { paddingHorizontal: spacing.lg, paddingBottom: 20 },
-  avatarBlock: { alignSelf: 'center', marginVertical: 20 },
-  avatar: { width: 110, height: 110, borderRadius: 55, backgroundColor: colors.surface, justifyContent: 'center', alignItems: 'center' },
-  avatarText: { color: 'rgba(255,255,255,0.5)', fontSize: 48, fontWeight: '600' },
-  avatarImage: { width: 110, height: 110, borderRadius: 55 },
-  cameraBadge: { position: 'absolute', right: 2, bottom: 2, width: 34, height: 34, borderRadius: 17, backgroundColor: colors.accent, justifyContent: 'center', alignItems: 'center' },
-  cameraIcon: { fontSize: 15 },
-  label: { color: colors.textMuted, fontSize: 14, fontWeight: '600', marginBottom: 8, marginTop: 20 },
-  input: { backgroundColor: colors.surface, borderRadius: radius.md, borderWidth: 1.5, borderColor: 'transparent', paddingHorizontal: 16, paddingVertical: 16, fontSize: 16, color: colors.text },
+  content: { paddingHorizontal: spacing.md, paddingTop: 20, paddingBottom: 20 },
+  avatarBlock: { alignItems: 'center', gap: 10, marginBottom: 6 },
+  changePhoto: { color: colors.accent, fontSize: 14, fontWeight: '600' },
+  label: { ...type.mono, fontSize: 10.5, color: colors.textMuted, marginBottom: spacing.sm, marginTop: 18 },
+  input: {
+    minHeight: 48, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border,
+    paddingHorizontal: 14, paddingVertical: 12, fontSize: 15, color: colors.text,
+  },
+  multiline: { minHeight: 110, lineHeight: 21 },
   inputActive: { borderColor: colors.accent },
-  phoneRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', backgroundColor: colors.surface, borderRadius: radius.md, paddingHorizontal: 16, paddingVertical: 16 },
-  phoneText: { color: 'rgba(255,255,255,0.5)', fontSize: 16 },
-  check: { color: colors.success, fontSize: 18, fontWeight: '700' },
-  notice: { flexDirection: 'row', marginTop: 24, paddingRight: 10 },
-  noticeIcon: { fontSize: 14, marginRight: 8, color: colors.textMuted },
-  noticeText: { flex: 1, color: 'rgba(255,255,255,0.45)', fontSize: 14, lineHeight: 20 },
-  footer: { paddingHorizontal: spacing.lg, paddingTop: 10, paddingBottom: 20 },
-  saveButton: { backgroundColor: colors.accent, borderRadius: radius.pill, paddingVertical: 18, alignItems: 'center' },
-  saveButtonDisabled: { opacity: 0.6 },
-  saveText: { color: colors.accentText, fontSize: 16, fontWeight: '700' },
+  phoneRow: {
+    minHeight: 48, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, paddingHorizontal: 14,
+  },
+  phoneText: { color: colors.textMuted, fontSize: 15 },
+  verified: { ...type.mono, fontSize: 10, color: colors.success },
+  notice: { color: colors.textMuted, fontSize: 12.5, lineHeight: 18, marginTop: spacing.sm },
+  footer: { paddingHorizontal: spacing.md, paddingTop: 10, paddingBottom: 18, borderTopWidth: 1, borderTopColor: colors.border },
 });

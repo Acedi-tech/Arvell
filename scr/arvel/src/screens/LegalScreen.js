@@ -1,11 +1,11 @@
 // Пользовательское соглашение и политика конфиденциальности.
 // route.params.doc: 'terms' | 'privacy'.
 import React from 'react';
-import { View, ScrollView, Pressable, StyleSheet } from 'react-native';
+import { View, ScrollView, StyleSheet } from 'react-native';
 import { Text } from '../components/AppText';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { colors, spacing, font } from '../theme';
-import { BackIcon } from '../components/Icons';
+import { colors, spacing, type } from '../theme';
+import Header from '../components/Header';
 
 const DOCS = {
   terms: {
@@ -39,20 +39,12 @@ export default function LegalScreen({ navigation, route }) {
 
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
-      <View style={styles.header}>
-        <Pressable hitSlop={10} accessibilityLabel="Назад" onPress={() => navigation.goBack()}><BackIcon size={26} /></Pressable>
-        <Text style={styles.headerTitle} numberOfLines={1}>{doc.title}</Text>
-        <View style={{ width: 26 }} />
-      </View>
-
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ padding: spacing.lg, paddingBottom: spacing.xl }}>
-        {doc.sections.map((s, i) => (
-          <View key={i} style={{ marginBottom: spacing.lg }}>
-            <View style={styles.rowHead}>
-              <View style={styles.num}><Text style={styles.numText}>{i + 1}</Text></View>
-              <Text style={styles.title}>{s.title}</Text>
-            </View>
-            <Text style={styles.text}>{s.text}</Text>
+      <Header title={doc.title} onBack={() => navigation.goBack()} />
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.content}>
+        {doc.sections.map((r, i) => (
+          <View key={i} style={styles.section}>
+            <Text style={styles.title}>{i + 1}. {r.title}</Text>
+            <Text style={styles.text}>{r.text}</Text>
           </View>
         ))}
         <Text style={styles.updated}>Последнее обновление: октябрь 2026</Text>
@@ -63,12 +55,9 @@ export default function LegalScreen({ navigation, route }) {
 
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.bg },
-  header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: spacing.sm, paddingHorizontal: spacing.lg, paddingVertical: spacing.md },
-  headerTitle: { flex: 1, color: colors.text, fontSize: font.sizeLG, fontWeight: '800', textAlign: 'center' },
-  rowHead: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, marginBottom: spacing.sm },
-  num: { width: 24, height: 24, borderRadius: 12, backgroundColor: colors.accentDim, alignItems: 'center', justifyContent: 'center' },
-  numText: { color: colors.accent, fontSize: font.sizeSM, fontWeight: '800' },
-  title: { flex: 1, color: colors.text, fontSize: font.sizeLG, fontWeight: '800' },
-  text: { color: colors.textMuted, fontSize: font.sizeMD, lineHeight: 23, paddingLeft: 32 },
-  updated: { color: colors.textMuted, fontSize: font.sizeSM, textAlign: 'center', marginTop: spacing.md },
+  content: { padding: spacing.md, paddingTop: 18, paddingBottom: spacing.xl },
+  section: { marginBottom: 20 },
+  title: { ...type.monoMedium, fontSize: 11.5, color: colors.accent, marginBottom: 6 },
+  text: { color: colors.textSub, fontSize: 14, lineHeight: 22 },
+  updated: { color: colors.textMuted, fontSize: 12, marginTop: spacing.sm },
 });

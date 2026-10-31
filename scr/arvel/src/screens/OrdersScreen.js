@@ -1,12 +1,15 @@
 // Экран «Заказы» (покупатель) / «Продажи» (продавец).
 // Открывается из плиток статистики в «Профиле».
 import React, { useState, useEffect, useCallback } from 'react';
-import { View, StyleSheet, Pressable, ScrollView, Modal, ActivityIndicator, Image } from 'react-native';
+import { View, StyleSheet, Pressable, ScrollView, ActivityIndicator, Image } from 'react-native';
 import { Text } from '../components/AppText';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect } from '@react-navigation/native';
-import { colors, spacing, radius, font } from '../theme';
-import { BackIcon, TeeIcon, CloseIcon } from '../components/Icons';
+import { colors, spacing, type } from '../theme';
+import { TeeIcon } from '../components/Icons';
+import Header from '../components/Header';
+import Button from '../components/Button';
+import BottomSheet from '../components/BottomSheet';
 import { useAuth } from '../context/AuthContext';
 import { useMoney } from '../context/AppConfigContext';
 import { listMyPurchases, listMySales } from '../api/purchases';
@@ -21,7 +24,7 @@ export default function OrdersScreen({ navigation }) {
   // «Заказы»/«Продажи» подразумевали текущие, незавершённые заказы — а тут
   // только история уже прошедших сделок (mock, нет эндпоинта активных
   // заказов). Заголовок и пустое состояние теперь говорят прямо об этом.
-  const title = isSeller ? 'Завершённые продажи' : 'Завершённые сделки';
+  const title = isSeller ? 'Подтверждённые продажи' : 'Завершённые сделки';
   const rowLabel = isSeller ? 'Продажа' : 'Покупка';
   const [selected, setSelected] = useState(null);
 
@@ -43,6 +46,7 @@ export default function OrdersScreen({ navigation }) {
         priceMinor: c.product?.price_minor,
         date: formatTime(c.confirmed_at),
         thumbnail: resolveMediaUrl(c.product?.thumbnail_url),
+        shopName: c.product?.seller?.shop_name,
       })));
     } catch (e) {
       setError(e?.message || 'Не удалось загрузить историю сделок.');
@@ -73,140 +77,98 @@ export default function OrdersScreen({ navigation }) {
     navigation.navigate('WriteReview', { productId: deal.productId, title: deal.title, thumbnail: deal.thumbnail });
   };
 
+  const sellerName = (d) => d.shopName;
+
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
-      <View style={styles.header}>
-        <Pressable hitSlop={10} accessibilityLabel="Назад" onPress={() => navigation.goBack()}>
-          <BackIcon size={26} />
-        </Pressable>
-        <Text style={styles.headerTitle}>{title}</Text>
-        <View style={{ width: 26 }} />
-      </View>
+      <Header title={title} onBack={() => navigation.goBack()} />
 
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: spacing.xl }}>
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: spacing.xl, flexGrow: 1 }}>
         {loading ? (
           <View style={styles.empty}><ActivityIndicator color={colors.accent} /></View>
         ) : deals.length === 0 ? (
           <View style={styles.empty}>
             <Text style={styles.emptyTitle}>
-              {error || (isSeller ? 'Пока нет завершённых продаж' : 'Пока нет завершённых сделок')}
+              {error || (isSeller ? 'Пока нет продаж' : 'Пока нет завершённых сделок')}
             </Text>
             {!error && (
               <Text style={styles.emptySub}>
                 {isSeller
-                  ? 'Завершённые сделки появятся здесь.'
-                  : 'Ваши покупки появятся здесь после первой сделки.'}
+                  ? 'Подтвердите продажу в чате с покупателем, и она появится здесь'
+                  : 'Ваши покупки появятся здесь, когда продавец подтвердит продажу'}
               </Text>
             )}
           </View>
         ) : (
-          <View style={styles.card}>
-            {deals.map((d, i) => (
-              <Pressable
-                key={d.id}
-                style={[styles.dealRow, i < deals.length - 1 && styles.dealBorder]}
-                onPress={() => setSelected(d)}
-              >
-                <View style={styles.dealImg}>
-                  {d.thumbnail
-                    ? <Image source={{ uri: d.thumbnail }} style={styles.dealThumb} />
-                    : <TeeIcon size={36} />}
-                </View>
-                <View style={{ flex: 1 }}>
-                  <Text style={styles.dealTitle}>{d.title}</Text>
-                  <Text style={styles.dealSub}>{rowLabel} · {d.date}</Text>
-                </View>
-                <Text style={styles.dealPrice}>{money.formatMinor(d.priceMinor)}</Text>
-              </Pressable>
-            ))}
-          </View>
+          deals.map((d) => (
+            <Pressable
+              key={d.id}
+              style={styles.dealRow}
+              disabled={isSeller}
+              onPress={() => setSelected(d)}
+            >
+              <View style={styles.dealImg}>
+                {d.thumbnail
+                  ? <Image source={{ uri: d.thumbnail }} style={styles.dealThumb} />
+                  : <TeeIcon size={36} />}
+              </View>
+              <View style={{ flex: 1, minWidth: 0 }}>
+                <Text style={styles.dealTitle} numberOfLines={1}>{d.title}</Text>
+                <Text style={styles.dealSub}>{rowLabel} · {d.date}</Text>
+              </View>
+              <Text style={styles.dealPrice}>{money.formatMinor(d.priceMinor)}</Text>
+            </Pressable>
+          ))
         )}
       </ScrollView>
 
-      <Modal visible={!!selected} transparent animationType="fade" onRequestClose={() => setSelected(null)}>
-        <Pressable style={styles.modalOverlay} onPress={() => setSelected(null)}>
-          <Pressable style={styles.modalCard} onPress={() => {}}>
-            {selected && (() => {
-              return (
-                <>
-                  <View style={styles.modalHead}>
-                    <View style={styles.dealImg}>
-                      {selected.thumbnail
-                        ? <Image source={{ uri: selected.thumbnail }} style={styles.dealThumb} />
-                        : <TeeIcon size={36} />}
-                    </View>
-                    <Pressable hitSlop={10} accessibilityLabel="Закрыть" onPress={() => setSelected(null)}>
-                      <CloseIcon size={20} />
-                    </Pressable>
-                  </View>
-                  <Text style={styles.modalTitle}>{selected.title}</Text>
-                  <Text style={styles.modalRow}>{rowLabel} · {selected.date}</Text>
-                  <Text style={styles.modalPrice}>{money.formatMinor(selected.priceMinor)}</Text>
-                  {!isSeller && !!selected.productId && (
-                    reviewedIds.has(selected.productId) ? (
-                      <Text style={styles.reviewDone}>Вы уже оставили отзыв на эту покупку</Text>
-                    ) : (
-                      <Pressable style={styles.reviewBtn} onPress={() => openWriteReview(selected)}>
-                        <Text style={styles.reviewBtnText}>Оставить отзыв</Text>
-                      </Pressable>
-                    )
-                  )}
-                  <Text style={styles.modalNote}>
-                    Это запись из истории сделок. Подробности переписки и статус проверки подлинности
-                    появятся здесь, когда сделки будут вестись через ARVELL.
-                  </Text>
-                </>
-              );
-            })()}
-          </Pressable>
-        </Pressable>
-      </Modal>
+      <BottomSheet visible={!!selected} onClose={() => setSelected(null)}>
+        {selected && (
+          <>
+            <View style={styles.sheetImg}>
+              {selected.thumbnail
+                ? <Image source={{ uri: selected.thumbnail }} style={styles.dealThumb} />
+                : <TeeIcon size={72} />}
+            </View>
+            <Text style={styles.sheetTitle}>{selected.title}</Text>
+            <Text style={styles.sheetSub}>
+              {[rowLabel, selected.date, sellerName(selected)].filter(Boolean).join(' · ')}
+            </Text>
+            <Text style={styles.sheetPrice}>{money.formatMinor(selected.priceMinor)}</Text>
+            {!!selected.productId && (
+              reviewedIds.has(selected.productId) ? (
+                <Text style={styles.reviewDone}>✓ Вы уже оставили отзыв на эту покупку</Text>
+              ) : (
+                <Button title="Оставить отзыв" onPress={() => openWriteReview(selected)} />
+              )
+            )}
+          </>
+        )}
+      </BottomSheet>
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.bg },
-  reviewBtn: {
-    marginTop: spacing.md, backgroundColor: colors.accent,
-    borderRadius: radius.pill, paddingVertical: 14, alignItems: 'center',
-  },
-  reviewBtnText: { color: colors.accentText, fontSize: font.sizeMD, fontWeight: '800' },
-  reviewDone: { color: colors.success, fontSize: font.sizeSM, fontWeight: '600', marginTop: spacing.md },
-  header: {
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-    paddingHorizontal: spacing.md, paddingVertical: spacing.md,
-  },
-  headerTitle: { color: colors.text, fontSize: font.sizeLG, fontWeight: '800' },
-  dealThumb: { width: '100%', height: '100%', borderRadius: radius.md },
+  empty: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 30, paddingVertical: 90 },
+  emptyTitle: { color: colors.text, fontSize: 16, fontWeight: '700', textAlign: 'center', marginBottom: spacing.sm },
+  emptySub: { color: colors.textMuted, fontSize: 13.5, lineHeight: 20, textAlign: 'center' },
 
-  card: {
-    marginHorizontal: spacing.md, marginTop: spacing.sm,
-    backgroundColor: colors.surface, borderRadius: radius.md, overflow: 'hidden',
+  dealRow: {
+    flexDirection: 'row', alignItems: 'center', gap: 12,
+    paddingHorizontal: spacing.md, paddingVertical: 12,
+    borderBottomWidth: 1, borderBottomColor: colors.border,
   },
-  dealRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, padding: spacing.md },
-  dealBorder: { borderBottomWidth: 1, borderBottomColor: colors.border },
-  dealImg: {
-    width: 52, height: 52, borderRadius: radius.sm,
-    backgroundColor: colors.surfaceAlt,
-    alignItems: 'center', justifyContent: 'center',
-  },
-  dealTitle: { color: colors.text, fontSize: font.sizeMD, fontWeight: '700' },
-  dealSub: { color: colors.textMuted, fontSize: font.sizeSM, marginTop: 2 },
-  dealPrice: { color: colors.text, fontSize: font.sizeMD, fontWeight: '800' },
+  dealImg: { width: 56, height: 56, backgroundColor: colors.surface, alignItems: 'center', justifyContent: 'center', overflow: 'hidden' },
+  dealThumb: { width: '100%', height: '100%' },
+  dealTitle: { color: colors.text, fontSize: 14.5, fontWeight: '600' },
+  dealSub: { color: colors.textMuted, fontSize: 12.5, marginTop: 3 },
+  dealPrice: { color: colors.accent, fontSize: 14.5, fontWeight: '800' },
 
-  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'center', padding: spacing.lg },
-  modalCard: { backgroundColor: colors.surface, borderRadius: radius.lg, padding: spacing.lg, borderWidth: 1, borderColor: colors.border },
-  modalHead: { flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between' },
-  modalTitle: { color: colors.text, fontSize: font.sizeLG, fontWeight: '800', marginTop: spacing.md },
-  modalRow: { color: colors.textMuted, fontSize: font.sizeMD, marginTop: 4 },
-  modalPrice: { color: colors.accent, fontSize: font.sizeXL, fontWeight: '800', marginTop: spacing.sm },
-  modalNote: { color: colors.textFaint, fontSize: font.sizeSM, lineHeight: 19, marginTop: spacing.md },
-
-  empty: { alignItems: 'center', paddingHorizontal: spacing.lg, paddingTop: spacing.xxl },
-  emptyTitle: { color: colors.text, fontSize: font.sizeLG, fontWeight: '700', textAlign: 'center' },
-  emptySub: {
-    color: colors.textMuted, fontSize: font.sizeMD, textAlign: 'center',
-    marginTop: spacing.sm, lineHeight: 22,
-  },
+  sheetImg: { height: 170, backgroundColor: colors.surfaceAlt, alignItems: 'center', justifyContent: 'center', overflow: 'hidden' },
+  sheetTitle: { color: colors.text, fontSize: 17, fontWeight: '800', marginTop: 14 },
+  sheetSub: { color: colors.textMuted, fontSize: 13, marginTop: 4 },
+  sheetPrice: { ...type.display, color: colors.accent, fontSize: 22, marginTop: 10, marginBottom: spacing.md },
+  reviewDone: { color: colors.success, fontSize: 14, fontWeight: '600', marginBottom: spacing.sm },
 });

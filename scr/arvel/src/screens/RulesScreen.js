@@ -1,10 +1,10 @@
 // Экран правил площадки.
 import React from 'react';
-import { View, ScrollView, Pressable, StyleSheet } from 'react-native';
+import { View, ScrollView, StyleSheet } from 'react-native';
 import { Text } from '../components/AppText';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { colors, spacing, font } from '../theme';
-import { BackIcon } from '../components/Icons';
+import { colors, spacing, type } from '../theme';
+import Header from '../components/Header';
 
 const RULES = [
   { title: 'Как работает ARVELL', text: 'Покупатель и продавец общаются в чате приложения и договариваются о встрече. Оплата — лично, при получении товара. ARVELL не принимает платежи и не хранит деньги пользователей.' },
@@ -20,19 +20,11 @@ const RULES = [
 export default function RulesScreen({ navigation }) {
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
-      <View style={styles.header}>
-        <Pressable hitSlop={10} accessibilityLabel="Назад" onPress={() => navigation.goBack()}><BackIcon size={26} /></Pressable>
-        <Text style={styles.headerTitle}>Правила</Text>
-        <View style={{ width: 26 }} />
-      </View>
-
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ padding: spacing.lg, paddingBottom: spacing.xl }}>
+      <Header title="Правила" onBack={() => navigation.goBack()} />
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.content}>
         {RULES.map((r, i) => (
-          <View key={i} style={{ marginBottom: spacing.lg }}>
-            <View style={styles.rowHead}>
-              <View style={styles.num}><Text style={styles.numText}>{i + 1}</Text></View>
-              <Text style={styles.title}>{r.title}</Text>
-            </View>
+          <View key={i} style={styles.section}>
+            <Text style={styles.title}>{i + 1}. {r.title}</Text>
             <Text style={styles.text}>{r.text}</Text>
           </View>
         ))}
@@ -44,12 +36,9 @@ export default function RulesScreen({ navigation }) {
 
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.bg },
-  header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: spacing.lg, paddingVertical: spacing.md },
-  headerTitle: { color: colors.text, fontSize: font.sizeLG, fontWeight: '800' },
-  rowHead: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, marginBottom: spacing.sm },
-  num: { width: 24, height: 24, borderRadius: 12, backgroundColor: colors.accentDim, alignItems: 'center', justifyContent: 'center' },
-  numText: { color: colors.accent, fontSize: font.sizeSM, fontWeight: '800' },
-  title: { color: colors.text, fontSize: font.sizeLG, fontWeight: '800' },
-  text: { color: colors.textMuted, fontSize: font.sizeMD, lineHeight: 23, paddingLeft: 32 },
-  updated: { color: colors.textMuted, fontSize: font.sizeSM, textAlign: 'center', marginTop: spacing.md },
+  content: { padding: spacing.md, paddingTop: 18, paddingBottom: spacing.xl },
+  section: { marginBottom: 20 },
+  title: { ...type.monoMedium, fontSize: 11.5, color: colors.accent, marginBottom: 6 },
+  text: { color: colors.textSub, fontSize: 14, lineHeight: 22 },
+  updated: { color: colors.textMuted, fontSize: 12, marginTop: spacing.sm },
 });
