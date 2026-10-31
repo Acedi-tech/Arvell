@@ -94,7 +94,7 @@ forEachRole(({ t }) => {
     it('Пустой список переписок', async () => {
       chatApi.listConversations.mockResolvedValue({ data: [] });
       render(<ChatScreen navigation={navigation} />);
-      expect(await screen.findByText(/Пока нет переписок/)).toBeTruthy();
+      expect(await screen.findByText('Пока нет сообщений')).toBeTruthy();
     });
 
     it('Ошибка загрузки чатов', async () => {
@@ -115,11 +115,11 @@ forEachRole(({ t }) => {
     it('Chat: «Выбрать» / «Готово»', async () => {
       await renderChat();
       fireEvent.press(screen.getByText('Выбрать'));
-      expect(screen.getByText('Готово')).toBeTruthy();
-      expect(screen.getByText('Выберите чаты')).toBeTruthy();
-      fireEvent.press(screen.getByText('Готово'));
+      expect(screen.getByText('Отмена')).toBeTruthy();
+      expect(screen.getByText('Выбрано: 0')).toBeTruthy();
+      fireEvent.press(screen.getByText('Отмена'));
       expect(screen.getByText('Выбрать')).toBeTruthy();
-      expect(screen.queryByText('Выберите чаты')).toBeNull();
+      expect(screen.queryByText('Выбрано: 0')).toBeNull();
     });
 
     it('Chat: строка чата -> Conversation', async () => {
@@ -147,11 +147,11 @@ forEachRole(({ t }) => {
       await renderChat();
       fireEvent.press(screen.getByText('Выбрать'));
       // Без выбора кнопка неактивна.
-      fireEvent.press(screen.getByText('Прочитано'));
+      fireEvent.press(screen.getByText('✓ Отметить прочитанным'));
       expect(chatApi.markConversationRead).not.toHaveBeenCalled();
 
       fireEvent.press(screen.getByText('Alex Shop'));
-      fireEvent.press(screen.getByText('Прочитано'));
+      fireEvent.press(screen.getByText('✓ Отметить прочитанным'));
       expect(chatApi.markConversationRead).toHaveBeenCalledWith('c1');
       expect(screen.queryByText('2')).toBeNull(); // счётчик непрочитанных исчез
       expect(screen.getByText('Выбрать')).toBeTruthy(); // вышли из режима выбора
@@ -201,6 +201,8 @@ forEachRole(({ t }) => {
     const attachPhoto = async (uri = 'file:///local.jpg') => {
       ImagePicker.launchImageLibraryAsync.mockResolvedValueOnce({ canceled: false, assets: [{ uri }] });
       fireEvent.press(screen.getByLabelText('Прикрепить фото'));
+      // Скрепка открывает шторку «Фото / Камера».
+      fireEvent.press(screen.getByText('Фото'));
       await waitFor(() => expect(getImage(uri)).toBeTruthy());
     };
 
@@ -225,6 +227,17 @@ forEachRole(({ t }) => {
     it('Чат с поддержкой без товара — понятное сообщение', async () => {
       await renderConversation({ params: { name: 'Поддержка ARVELL', rating: 5 } });
       expect(screen.getByText(/Этот диалог пока недоступен/)).toBeTruthy();
+    });
+
+    it('Conversation: мини-карточка товара открывает товар', async () => {
+      chatApi.getConversation.mockResolvedValue({
+        id: 'c1', status: 'open', product: { id: 'p9', title: 'Samba', brand: { name: 'Adidas' }, price_minor: 990000 },
+      });
+      await renderConversation();
+      fireEvent.press(await screen.findByText('Adidas Samba'));
+      expect(navigation.navigate).toHaveBeenCalledWith('Main', {
+        screen: 'Feed', params: { screen: 'Product', params: { id: 'p9' }, initial: false },
+      });
     });
 
     it('Conversation: стрелка назад', async () => {
@@ -254,10 +267,20 @@ forEachRole(({ t }) => {
       expect(screen.getByPlaceholderText('Подпись к фото...')).toBeTruthy();
     });
 
+    it('Conversation: скрепка -> «Камера» снимает фото', async () => {
+      ImagePicker.launchCameraAsync.mockResolvedValueOnce({ canceled: false, assets: [{ uri: 'file:///cam.jpg' }] });
+      await renderConversation();
+      fireEvent.press(screen.getByLabelText('Прикрепить фото'));
+      fireEvent.press(screen.getByText('Камера'));
+      await waitFor(() => expect(getImage('file:///cam.jpg')).toBeTruthy());
+      expect(ImagePicker.launchImageLibraryAsync).not.toHaveBeenCalled();
+    });
+
     it('Conversation: вложение без доступа к галерее -> алерт', async () => {
       ImagePicker.requestMediaLibraryPermissionsAsync.mockResolvedValueOnce({ granted: false });
       await renderConversation();
       fireEvent.press(screen.getByLabelText('Прикрепить фото'));
+      fireEvent.press(screen.getByText('Фото'));
       await waitFor(() => expect(Alert.alert).toHaveBeenCalledWith('Нет доступа к фото', expect.any(String)));
       expect(ImagePicker.launchImageLibraryAsync).not.toHaveBeenCalled();
     });

@@ -1,10 +1,14 @@
 import React, { useState, useCallback } from 'react';
-import { View, FlatList, StyleSheet, Pressable, Alert, Image } from 'react-native';
+import { View, FlatList, StyleSheet, Pressable, Alert } from 'react-native';
 import { Text, TextInput } from '../components/AppText';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect } from '@react-navigation/native';
-import { colors, spacing, radius, font } from '../theme';
-import { SearchIcon, CheckCircle, TrashIcon } from '../components/Icons';
+import { colors, spacing, font, type } from '../theme';
+import { SearchIcon, ChatIcon } from '../components/Icons';
+import Avatar from '../components/Avatar';
+import Button from '../components/Button';
+import EmptyState from '../components/EmptyState';
+import CheckIcon from '../components/CheckIcon';
 import { listConversations, markConversationRead } from '../api/chat';
 import { useAuth } from '../context/AuthContext';
 import { useChatUnread } from '../context/ChatUnreadContext';
@@ -120,69 +124,83 @@ export default function ChatScreen({ navigation }) {
     );
   };
 
+  const n = selectedIds.length;
+
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
       <View style={styles.headerRow}>
-        {/* симметричные боковые зоны держат заголовок по центру */}
-        <View style={styles.headerSide} />
-        <Text style={styles.title}>Чаты</Text>
-        <Pressable style={[styles.headerSide, styles.headerRight]} onPress={toggleSelectMode}>
-          <Text style={styles.action} numberOfLines={1}>{selectMode ? 'Готово' : 'Выбрать'}</Text>
-        </Pressable>
+        <View style={styles.headerSide}>
+          {selectMode && (
+            <Pressable hitSlop={8} onPress={exitSelectMode}>
+              <Text style={styles.action}>Отмена</Text>
+            </Pressable>
+          )}
+        </View>
+        <Text style={styles.title}>{selectMode ? `Выбрано: ${n}` : 'Чаты'}</Text>
+        <View style={[styles.headerSide, styles.headerRight]}>
+          {!selectMode && threads.length > 0 && (
+            <Pressable hitSlop={8} onPress={toggleSelectMode}>
+              <Text style={styles.action} numberOfLines={1}>Выбрать</Text>
+            </Pressable>
+          )}
+        </View>
       </View>
 
-      <View style={styles.searchWrap}>
-        <SearchIcon size={20} color={colors.textMuted} />
-        <TextInput
-          style={styles.input}
-          placeholder="Поиск по чатам"
-          placeholderTextColor={colors.textMuted}
-          value={query}
-          onChangeText={setQuery}
-        />
-      </View>
+      {threads.length > 0 && (
+        <View style={styles.searchWrap}>
+          <SearchIcon size={18} color={colors.textMuted} />
+          <TextInput
+            style={styles.input}
+            placeholder="Поиск по чатам"
+            placeholderTextColor={colors.textFaint}
+            selectionColor={colors.accent}
+            value={query}
+            onChangeText={setQuery}
+          />
+        </View>
+      )}
 
       <FlatList
         data={data}
         keyExtractor={(t) => t.id}
         keyboardShouldPersistTaps="handled"
         keyboardDismissMode="on-drag"
-        contentContainerStyle={[
-          { paddingHorizontal: spacing.lg },
-          data.length === 0 && styles.emptyWrap,
-        ]}
-        ListEmptyComponent={(
-          <Text style={styles.empty}>
-            {loading ? 'Загружаем чаты...'
-              : error || (query.trim()
-                ? 'Ничего не найдено'
-                : 'Пока нет переписок. Напишите продавцу со страницы товара — диалог появится здесь.')}
-          </Text>
-        )}
+        contentContainerStyle={data.length === 0 && styles.emptyWrap}
+        ListEmptyComponent={
+          loading ? (
+            <Text style={styles.empty}>Загружаем чаты...</Text>
+          ) : error ? (
+            <Text style={styles.empty}>{error}</Text>
+          ) : query.trim() ? (
+            <Text style={styles.empty}>Ничего не найдено</Text>
+          ) : (
+            <EmptyState
+              icon={<ChatIcon size={28} color={colors.textMuted} />}
+              title="Пока нет сообщений"
+              message="Напишите продавцу со страницы товара — диалог появится здесь"
+            />
+          )
+        }
         renderItem={({ item }) => {
           const checked = selectedIds.includes(item.id);
+          const closed = item.status === 'closed';
           return (
             <Pressable style={styles.row} onPress={() => handleRowPress(item)}>
               {selectMode && (
-                <View style={styles.checkboxWrap}>
-                  {checked ? <CheckCircle size={22} /> : <View style={styles.checkboxEmpty} />}
+                <View style={[styles.checkbox, checked && styles.checkboxOn]}>
+                  {checked && <CheckIcon size={14} />}
                 </View>
               )}
-              <View style={styles.avatarWrap}>
-                <View style={styles.avatar}>
-                  {item.avatar
-                    ? <Image source={{ uri: item.avatar }} style={styles.avatarImage} />
-                    : <Text style={styles.avatarText}>{item.name?.[0]?.toUpperCase() || '?'}</Text>}
-                </View>
-                {item.dot && <View style={styles.redDot} />}
-              </View>
+              <Avatar uri={item.avatar} name={item.name} size={50} />
               <View style={styles.rowBody}>
                 <View style={styles.rowTop}>
-                  <Text style={styles.name}>{item.name}</Text>
+                  <Text style={styles.name} numberOfLines={1}>{item.name}</Text>
                   <Text style={styles.time}>{formatTime(item.at)}</Text>
                 </View>
                 <View style={styles.rowBottom}>
-                  <Text style={styles.last} numberOfLines={1}>{item.last}</Text>
+                  <Text style={[styles.last, closed && styles.lastClosed]} numberOfLines={1}>
+                    {closed ? 'Переписка закрыта' : item.last}
+                  </Text>
                   {item.unread > 0 && (
                     <View style={styles.badge}>
                       <Text style={styles.badgeText}>{item.unread}</Text>
@@ -197,26 +215,8 @@ export default function ChatScreen({ navigation }) {
 
       {selectMode && (
         <View style={styles.panel}>
-          <Text style={styles.panelCaption}>
-            {selectedIds.length === 0 ? 'Выберите чаты' : `Выбрано: ${selectedIds.length}`}
-          </Text>
-          <View style={styles.panelButtons}>
-            <Pressable
-              style={[styles.panelBtn, selectedIds.length === 0 && styles.panelBtnDisabled]}
-              onPress={markSelectedRead}
-              disabled={selectedIds.length === 0}
-            >
-              <Text style={styles.panelBtnText}>Прочитано</Text>
-            </Pressable>
-            <Pressable
-              style={[styles.panelBtn, styles.panelBtnDanger, selectedIds.length === 0 && styles.panelBtnDisabled]}
-              onPress={deleteSelected}
-              disabled={selectedIds.length === 0}
-            >
-              <TrashIcon size={18} color={colors.danger} />
-              <Text style={styles.panelBtnDangerText}>Скрыть</Text>
-            </Pressable>
-          </View>
+          <Button title="✓ Отметить прочитанным" disabled={n === 0} onPress={markSelectedRead} style={{ flex: 1 }} />
+          <Button title="Скрыть" variant="danger" disabled={n === 0} onPress={deleteSelected} style={styles.hideBtn} />
         </View>
       )}
     </SafeAreaView>
@@ -225,57 +225,55 @@ export default function ChatScreen({ navigation }) {
 
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.bg },
-  headerRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: spacing.lg, paddingVertical: spacing.md },
-  title: { color: colors.accent, fontSize: font.sizeLG, fontWeight: '800' },
-  headerSide: { flex: 1 },
+  headerRow: {
+    minHeight: 52, flexDirection: 'row', alignItems: 'center', paddingHorizontal: spacing.md,
+    borderBottomWidth: 1, borderBottomColor: colors.border,
+  },
+  title: { ...type.display, color: colors.accent, fontSize: 16, textAlign: 'center' },
+  headerSide: { width: 90 },
   headerRight: { alignItems: 'flex-end' },
-  action: { color: colors.accent, fontSize: font.sizeMD, fontWeight: '700' },
+  action: { color: colors.accent, fontSize: 14.5, fontWeight: '600' },
 
   searchWrap: {
-    flexDirection: 'row', alignItems: 'center', gap: spacing.sm,
-    backgroundColor: colors.surface, borderRadius: radius.lg,
-    marginHorizontal: spacing.lg, paddingHorizontal: spacing.md, marginBottom: spacing.sm,
+    minHeight: 48, flexDirection: 'row', alignItems: 'center', gap: 10,
+    backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border,
+    marginHorizontal: spacing.md, marginTop: 12, marginBottom: 6, paddingHorizontal: 14,
   },
-  input: { flex: 1, color: colors.text, fontSize: font.sizeMD, paddingVertical: spacing.md },
+  input: { flex: 1, color: colors.text, fontSize: 15, paddingVertical: 10 },
 
   emptyWrap: { flexGrow: 1, justifyContent: 'center' },
   empty: {
-    color: colors.textMuted, fontSize: font.sizeMD,
-    textAlign: 'center', lineHeight: 24, paddingHorizontal: spacing.lg,
+    color: colors.textMuted, fontSize: font.sizeSM,
+    textAlign: 'center', lineHeight: 21, paddingHorizontal: spacing.lg,
   },
 
-  row: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, paddingVertical: spacing.md },
-  checkboxWrap: { width: 22, height: 22 },
-  checkboxEmpty: { width: 22, height: 22, borderRadius: 11, borderWidth: 1.5, borderColor: colors.textMuted },
-  avatarWrap: { position: 'relative' },
-  avatar: { width: 56, height: 56, borderRadius: 28, backgroundColor: colors.surfaceAlt, alignItems: 'center', justifyContent: 'center' },
-  avatarText: { color: colors.text, fontSize: font.sizeLG, fontWeight: '700' },
-  avatarImage: { width: 56, height: 56, borderRadius: 28 },
-  redDot: { position: 'absolute', top: 2, right: 2, width: 12, height: 12, borderRadius: 6, backgroundColor: colors.danger, borderWidth: 2, borderColor: colors.bg },
-
-  rowBody: { flex: 1, borderBottomWidth: 1, borderBottomColor: colors.border, paddingBottom: spacing.md },
-  rowTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  name: { color: colors.text, fontSize: font.sizeMD, fontWeight: '700' },
-  time: { color: colors.textMuted, fontSize: font.sizeXS },
-  rowBottom: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 4 },
-  last: { flex: 1, color: colors.textMuted, fontSize: font.sizeSM },
-  badge: { minWidth: 22, height: 22, borderRadius: 11, paddingHorizontal: 6, backgroundColor: colors.accent, alignItems: 'center', justifyContent: 'center', marginLeft: spacing.sm },
-  badgeText: { color: colors.accentText, fontSize: font.sizeXS, fontWeight: '800' },
+  row: {
+    flexDirection: 'row', alignItems: 'center', gap: 12,
+    paddingHorizontal: spacing.md, paddingVertical: 12,
+    borderBottomWidth: 1, borderBottomColor: colors.border,
+  },
+  checkbox: {
+    width: 22, height: 22, borderWidth: 1.5, borderColor: '#555',
+    alignItems: 'center', justifyContent: 'center',
+  },
+  checkboxOn: { backgroundColor: colors.accent, borderColor: colors.accent },
+  rowBody: { flex: 1, minWidth: 0 },
+  rowTop: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
+  name: { flex: 1, color: colors.text, fontSize: 15, fontWeight: '700' },
+  time: { color: colors.textMuted, fontSize: 12 },
+  rowBottom: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, marginTop: 3 },
+  last: { flex: 1, color: colors.textMuted, fontSize: 13.5 },
+  lastClosed: { color: '#666', fontStyle: 'italic' },
+  badge: {
+    minWidth: 20, height: 20, paddingHorizontal: 6, backgroundColor: colors.accent,
+    alignItems: 'center', justifyContent: 'center',
+  },
+  badgeText: { color: colors.accentText, fontSize: 11.5, fontWeight: '700' },
 
   panel: {
-    borderTopWidth: 1, borderTopColor: colors.border,
-    paddingHorizontal: spacing.lg, paddingTop: spacing.sm, paddingBottom: spacing.md,
+    flexDirection: 'row', gap: spacing.sm,
+    borderTopWidth: 1, borderTopColor: colors.border, backgroundColor: colors.bg,
+    paddingHorizontal: spacing.md, paddingTop: 10, paddingBottom: 14,
   },
-  panelCaption: { color: colors.textMuted, fontSize: font.sizeSM, textAlign: 'center', marginBottom: spacing.sm },
-  panelButtons: { flexDirection: 'row', gap: spacing.sm },
-  panelBtn: {
-    flex: 1, flexDirection: 'row', gap: spacing.xs,
-    alignItems: 'center', justifyContent: 'center',
-    height: 48, borderRadius: radius.lg,
-    backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border,
-  },
-  panelBtnDanger: { borderColor: colors.danger },
-  panelBtnDisabled: { opacity: 0.4 },
-  panelBtnText: { color: colors.text, fontSize: font.sizeMD, fontWeight: '700' },
-  panelBtnDangerText: { color: colors.danger, fontSize: font.sizeMD, fontWeight: '700' },
+  hideBtn: { width: 110 },
 });

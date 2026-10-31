@@ -1,17 +1,20 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
-import { View, StyleSheet, Pressable, ScrollView, Image, Alert, Linking, Modal } from 'react-native';
+import { View, StyleSheet, Pressable, ScrollView, Image, Alert, Linking } from 'react-native';
 import { Text, TextInput } from '../components/AppText';
 import * as ImagePicker from 'expo-image-picker';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { colors, spacing, radius, font } from '../theme';
+import { colors, spacing, font, type } from '../theme';
 import {
-  BackIcon, StarIcon, PhoneCallIcon, SendIcon, ImageIcon,
-  TeeIcon, SneakerIcon, CloseIcon,
+  BackIcon, StarIcon, PhoneCallIcon, SendIcon, ImageIcon, CameraIcon,
+  TeeIcon, SneakerIcon, CloseIcon, ChevronRight,
 } from '../components/Icons';
+import Avatar from '../components/Avatar';
+import BottomSheet from '../components/BottomSheet';
+import PhotoViewer from '../components/PhotoViewer';
+import ClipIcon from '../components/ClipIcon';
 import KeyboardAware from '../components/KeyboardAware';
-import ZoomableImage from '../components/ZoomableImage';
 import ConfirmDialog from '../components/ConfirmDialog';
-import { useAppConfig, useMoney, labelFor } from '../context/AppConfigContext';
+import { useAppConfig, useMoney } from '../context/AppConfigContext';
 import { useAuth } from '../context/AuthContext';
 import { useChatUnread } from '../context/ChatUnreadContext';
 import {
@@ -24,7 +27,7 @@ import { resolveMediaUrl } from '../utils/media';
 import { formatTime, isImageBody } from '../utils/chatFormat';
 
 export default function ConversationScreen({ navigation, route }) {
-  const { conditions, maxImageBytes, maxImageWidth, maxImageHeight } = useAppConfig();
+  const { maxImageBytes, maxImageWidth, maxImageHeight } = useAppConfig();
   const money = useMoney();
   const name = route?.params?.name || 'Продавец';
   // Фото собеседника: из списка чатов/карточки товара, а при открытии чата
@@ -40,16 +43,10 @@ export default function ConversationScreen({ navigation, route }) {
   const product = route?.params?.product || null;   // если пришли из «Купить»
   const fromBuy = route?.params?.fromBuy || false;
 
-  const initial = name.trim()[0]?.toUpperCase() || 'A';
   const Ph = product?.kind === 'sneaker' ? SneakerIcon : TeeIcon;
-  const productThumb = resolveMediaUrl(product?.thumbnail_url || product?.images?.[0]?.url);
 
   // product может прийти в двух формах: реальный товар с бэкенда
-  // (brand — объект {name}, price_minor — копейки, size_value/size_system,
-  // condition — код) или локальный мок (brand — строка, price — рубли, size — строка)
-  const brandLabel = product ? (typeof product.brand === 'string' ? product.brand : product.brand?.name) || '' : '';
-  const sizeLabel = product ? (product.size_value || product.size || (product.size_system === 'one_size' ? 'One size' : '—')) : '';
-  const conditionLabel = product ? (product.price_minor != null ? labelFor(conditions, product.condition) : product.condition) : '';
+  // (price_minor — копейки) или локальный черновик (price — рубли).
   const priceLabel = product
     ? (product.price_minor != null ? money.formatMinor(product.price_minor) : (product.price != null ? money.formatMajor(product.price) : '—'))
     : '';
@@ -194,21 +191,42 @@ export default function ConversationScreen({ navigation, route }) {
     }
   };
 
-  const pickImage = async () => {
-    const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
+  // Скрепка открывает шторку «Фото / Камера».
+  const [attachOpen, setAttachOpen] = useState(false);
+  const pickImage = async (source) => {
+    setAttachOpen(false);
+    const camera = source === 'camera';
+    const perm = camera
+      ? await ImagePicker.requestCameraPermissionsAsync()
+      : await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (!perm.granted) {
       Alert.alert(
-        'Нет доступа к фото',
-        'Разрешите доступ к галерее в настройках, чтобы отправить фото.',
+        camera ? 'Нет доступа к камере' : 'Нет доступа к фото',
+        camera
+          ? 'Разрешите доступ к камере в настройках, чтобы сделать фото.'
+          : 'Разрешите доступ к галерее в настройках, чтобы отправить фото.',
       );
       return;
     }
-    const res = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ['images'],
-      quality: 0.8,
-    });
+    const res = camera
+      ? await ImagePicker.launchCameraAsync({ quality: 0.8 })
+      : await ImagePicker.launchImageLibraryAsync({ mediaTypes: ['images'], quality: 0.8 });
     if (res.canceled) return;
     setPendingImage(res.assets[0].uri);
+  };
+
+  // Мини-карточка товара над перепиской: если пришли со страницы товара —
+  // «назад» туда же, иначе открываем товар на «Главной».
+  const pinned = conv?.product || product;
+  const pinnedTitle = pinned
+    ? [typeof pinned.brand === 'string' ? pinned.brand : pinned.brand?.name, pinned.title].filter(Boolean).join(' ')
+    : '';
+  const pinnedThumb = resolveMediaUrl(pinned?.thumbnail_url || pinned?.images?.[0]?.url);
+  const pinnedPrice = pinned?.price_minor != null ? money.formatMinor(pinned.price_minor) : priceLabel;
+  const openPinned = () => {
+    if (!pinned?.id) return;
+    if (product?.id === pinned.id && navigation.canGoBack?.()) navigation.goBack();
+    else navigation.navigate('Main', { screen: 'Feed', params: { screen: 'Product', params: { id: pinned.id }, initial: false } });
   };
 
   // Продавец пока не отдаёт номер телефона через API (только имя магазина и
@@ -227,57 +245,60 @@ export default function ConversationScreen({ navigation, route }) {
 
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
-      {/* Шапка */}
       <View style={styles.header}>
-        <Pressable hitSlop={10} accessibilityLabel="Назад" onPress={() => navigation.goBack()}>
-          <BackIcon size={24} />
+        <Pressable hitSlop={10} style={styles.backBtn} accessibilityLabel="Назад" onPress={() => navigation.goBack()}>
+          <BackIcon size={22} />
         </Pressable>
-        <View style={styles.avatar}>
-          {avatar
-            ? <Image source={{ uri: avatar }} style={styles.avatarImage} />
-            : <Text style={styles.avatarText}>{initial}</Text>}
-        </View>
-        <View style={{ flex: 1 }}>
-          <Text style={styles.name}>{name}</Text>
+        <Avatar uri={avatar} name={name} size={38} />
+        <View style={{ flex: 1, minWidth: 0 }}>
+          <Text style={styles.name} numberOfLines={1}>{name}</Text>
           {rating != null && (
             <View style={styles.ratingRow}>
-              <StarIcon size={14} />
+              <StarIcon size={11} />
               <Text style={styles.rating}>{rating.toFixed(1)}</Text>
             </View>
           )}
         </View>
-        {/* Бэкенд пока не отдаёт номер телефона продавца — кнопка звонка
-            вела только к алерту «Номер недоступен» на каждый тап, что
-            выглядело как сломанная функция. Скрываем её до появления
-            номера в API, а не оставляем нерабочей. */}
-        {!!phone && (
-          <Pressable hitSlop={8} accessibilityLabel="Позвонить" onPress={onCallPress}>
-            <PhoneCallIcon size={22} color={colors.textMuted} />
+        {/* Номер продавца есть не всегда — без него кнопку не показываем. */}
+        {!!phone && !closed && (
+          <Pressable hitSlop={8} style={styles.backBtn} accessibilityLabel="Позвонить" onPress={onCallPress}>
+            <PhoneCallIcon size={20} color={colors.text} />
           </Pressable>
         )}
       </View>
 
-      {isSellerSide && !!convProductId && (
-        <View style={styles.saleBar}>
-          {saleConfirmed ? (
-            <Text style={styles.saleDone}>
-              ✓ Продажа подтверждена. Покупатель может оставить отзыв.
+      {!!pinned && (
+        <Pressable style={styles.pinned} onPress={openPinned} accessibilityLabel="Открыть товар">
+          <View style={styles.pinnedImg}>
+            {pinnedThumb ? <Image source={{ uri: pinnedThumb }} style={styles.pinnedPhoto} /> : <Ph size={30} />}
+          </View>
+          <View style={{ flex: 1, minWidth: 0 }}>
+            <Text style={styles.pinnedTitle} numberOfLines={1}>{pinnedTitle}</Text>
+            {!!pinnedPrice && <Text style={styles.pinnedPrice}>{pinnedPrice}</Text>}
+          </View>
+          <ChevronRight size={18} />
+        </Pressable>
+      )}
+
+      {isSellerSide && !!convProductId && !closed && (
+        saleConfirmed ? (
+          <View style={styles.saleDoneBar}>
+            <Text style={styles.saleDone}>✓ Продажа подтверждена. Покупатель может оставить отзыв</Text>
+          </View>
+        ) : (
+          <View style={styles.saleBar}>
+            <Text style={styles.saleText} numberOfLines={3}>
+              Товар продан этому покупателю? Подтвердите продажу — тогда он сможет оставить отзыв
             </Text>
-          ) : (
-            <>
-              <Text style={styles.saleText} numberOfLines={2}>
-                Товар продан этому покупателю? Подтвердите продажу — тогда он сможет оставить отзыв.
-              </Text>
-              <Pressable
-                style={[styles.saleBtn, confirming && { opacity: 0.6 }]}
-                disabled={confirming}
-                onPress={() => setConfirmVisible(true)}
-              >
-                <Text style={styles.saleBtnText}>{confirming ? '…' : 'Подтвердить продажу'}</Text>
-              </Pressable>
-            </>
-          )}
-        </View>
+            <Pressable
+              style={[styles.saleBtn, confirming && { opacity: 0.6 }]}
+              disabled={confirming}
+              onPress={() => setConfirmVisible(true)}
+            >
+              <Text style={styles.saleBtnText}>{confirming ? '…' : 'Подтвердить продажу'}</Text>
+            </Pressable>
+          </View>
+        )
       )}
 
       {/* KeyboardAware поднимает контент над клавиатурой на обеих платформах
@@ -292,28 +313,11 @@ export default function ConversationScreen({ navigation, route }) {
         >
           {fromBuy && (
             <View style={styles.system}>
-              <Text style={styles.systemBrand}>ARVELL</Text>
               <Text style={styles.systemText}>
+                <Text style={styles.systemBrand}>ARVELL  </Text>
                 Вы нажали «Купить». Напишите продавцу, чтобы договориться о деталях.
                 Оплата — при встрече с продавцом.
               </Text>
-            </View>
-          )}
-
-          {product && (
-            <View style={styles.productCard}>
-              <View style={styles.productTop}>
-                <View style={styles.productImg}>
-                  {productThumb
-                    ? <Image source={{ uri: productThumb }} style={styles.productPhoto} />
-                    : <Ph size={48} />}
-                </View>
-                <View style={{ flex: 1 }}>
-                  <Text style={styles.productTitle}>{brandLabel} {product.title}</Text>
-                  <Text style={styles.productSub}>{sizeLabel} · {conditionLabel}</Text>
-                  <Text style={styles.productPrice}>{priceLabel}</Text>
-                </View>
-              </View>
             </View>
           )}
 
@@ -324,13 +328,11 @@ export default function ConversationScreen({ navigation, route }) {
             const mine = !!user?.id && m.sender_id === user.id;
             const imageUri = isImageBody(m.body) ? resolveMediaUrl(m.body) : null;
             return (
-              <View key={m.id} style={{ alignItems: mine ? 'flex-end' : 'flex-start' }}>
+              <View key={m.id} style={[styles.msg, mine ? styles.msgMine : styles.msgTheirs]}>
                 {imageUri ? (
-                  <View style={styles.imageMsg}>
-                    <Pressable accessibilityLabel="Открыть фото" onPress={() => setViewerImage(imageUri)}>
-                      <Image source={{ uri: imageUri }} style={styles.bubbleImage} />
-                    </Pressable>
-                  </View>
+                  <Pressable accessibilityLabel="Открыть фото" onPress={() => setViewerImage(imageUri)} style={styles.imageMsg}>
+                    <Image source={{ uri: imageUri }} style={styles.bubbleImage} />
+                  </Pressable>
                 ) : (
                   <View style={[styles.bubble, mine ? styles.bubbleOut : styles.bubbleIn]}>
                     <Text style={[styles.bubbleText, mine && { color: colors.accentText }]}>
@@ -338,7 +340,7 @@ export default function ConversationScreen({ navigation, route }) {
                     </Text>
                   </View>
                 )}
-                <Text style={styles.time}>{formatTime(m.created_at)}</Text>
+                <Text style={[styles.time, mine && { textAlign: 'right' }]}>{formatTime(m.created_at)}</Text>
               </View>
             );
           })}
@@ -347,26 +349,27 @@ export default function ConversationScreen({ navigation, route }) {
         {/* Поле ввода */}
         <SafeAreaView edges={['bottom']} style={styles.inputBarSafe}>
           {closed ? (
-            <Text style={styles.closedNote}>Переписка закрыта — отправлять сообщения больше нельзя.</Text>
+            <Text style={styles.closedNote}>Переписка закрыта — отправлять сообщения больше нельзя</Text>
           ) : (
             <>
             {pendingImage && (
               <View style={styles.previewRow}>
                 <Image source={{ uri: pendingImage }} style={styles.previewImage} />
                 <Pressable hitSlop={8} style={styles.previewRemove} accessibilityLabel="Убрать фото" onPress={() => setPendingImage(null)}>
-                  <CloseIcon size={14} color={colors.text} />
+                  <CloseIcon size={13} color={colors.accentText} />
                 </Pressable>
               </View>
             )}
             <View style={styles.inputBar}>
-              <Pressable hitSlop={8} style={({ pressed }) => [styles.attachBtn, pressed && styles.btnPressed]} accessibilityLabel="Прикрепить фото" onPress={pickImage}>
-                <ImageIcon size={22} color={colors.textMuted} />
+              <Pressable hitSlop={8} style={({ pressed }) => [styles.attachBtn, pressed && styles.btnPressed]} accessibilityLabel="Прикрепить фото" onPress={() => setAttachOpen(true)}>
+                <ClipIcon size={22} color={colors.textMuted} />
               </Pressable>
               <View style={styles.inputWrap}>
                 <TextInput
                   style={styles.input}
                   placeholder={pendingImage ? 'Подпись к фото...' : 'Сообщение...'}
-                  placeholderTextColor={colors.textMuted}
+                  placeholderTextColor={colors.textFaint}
+                  selectionColor={colors.accent}
                   value={text}
                   onChangeText={setText}
                   multiline
@@ -382,13 +385,24 @@ export default function ConversationScreen({ navigation, route }) {
                 onPress={send}
                 disabled={(!text.trim() && !pendingImage) || !conversationId || sending}
               >
-                <SendIcon size={19} color={(text.trim() || pendingImage) ? colors.accentText : colors.textFaint} />
+                <SendIcon size={19} color={(text.trim() || pendingImage) ? colors.accentText : '#555'} />
               </Pressable>
             </View>
             </>
           )}
         </SafeAreaView>
       </KeyboardAware>
+
+      <BottomSheet visible={attachOpen} onClose={() => setAttachOpen(false)}>
+        <Pressable style={styles.sheetRow} onPress={() => pickImage('library')}>
+          <ImageIcon size={20} color={colors.accent} />
+          <Text style={styles.sheetText}>Фото</Text>
+        </Pressable>
+        <Pressable style={[styles.sheetRow, { borderBottomWidth: 0 }]} onPress={() => pickImage('camera')}>
+          <CameraIcon size={20} color={colors.accent} />
+          <Text style={styles.sheetText}>Камера</Text>
+        </Pressable>
+      </BottomSheet>
 
       <ConfirmDialog
         visible={confirmVisible}
@@ -402,28 +416,7 @@ export default function ConversationScreen({ navigation, route }) {
       />
 
       {/* Просмотр отправленной фотографии на весь экран, с приближением */}
-      <Modal
-        visible={!!viewerImage}
-        transparent
-        animationType="fade"
-        statusBarTranslucent
-        onRequestClose={() => setViewerImage(null)}
-      >
-        <View style={styles.viewerOverlay}>
-          {viewerImage && (
-            <ZoomableImage
-              uri={viewerImage}
-              style={styles.viewerImage}
-              onSingleTap={() => setViewerImage(null)}
-            />
-          )}
-          <SafeAreaView edges={['top']} style={styles.viewerCloseSafe} pointerEvents="box-none">
-            <Pressable hitSlop={10} style={styles.viewerClose} accessibilityLabel="Закрыть фото" onPress={() => setViewerImage(null)}>
-              <CloseIcon size={20} color={colors.text} />
-            </Pressable>
-          </SafeAreaView>
-        </View>
-      </Modal>
+      <PhotoViewer uri={viewerImage} onClose={() => setViewerImage(null)} />
     </SafeAreaView>
   );
 }
@@ -431,108 +424,88 @@ export default function ConversationScreen({ navigation, route }) {
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.bg },
   header: {
-    flexDirection: 'row', alignItems: 'center', gap: spacing.md,
-    paddingHorizontal: spacing.md, paddingBottom: spacing.md,
+    flexDirection: 'row', alignItems: 'center', gap: 10,
+    paddingLeft: 8, paddingRight: 12, paddingTop: 2, paddingBottom: 10,
     borderBottomWidth: 1, borderBottomColor: colors.border,
   },
-  saleBar: {
-    flexDirection: 'row', alignItems: 'center', gap: spacing.sm,
-    paddingHorizontal: spacing.md, paddingVertical: spacing.sm,
+  backBtn: { width: 36, height: 36, alignItems: 'center', justifyContent: 'center' },
+  name: { color: colors.text, fontSize: 15.5, fontWeight: '700' },
+  ratingRow: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 2 },
+  rating: { color: colors.textMuted, fontSize: 12 },
+
+  pinned: {
+    flexDirection: 'row', alignItems: 'center', gap: 10,
+    paddingHorizontal: spacing.md, paddingVertical: 8,
     backgroundColor: colors.surface, borderBottomWidth: 1, borderBottomColor: colors.border,
   },
-  saleText: { flex: 1, color: colors.textMuted, fontSize: font.sizeXS, lineHeight: 16 },
-  saleBtn: {
-    backgroundColor: colors.accent, borderRadius: radius.pill,
-    paddingHorizontal: spacing.md, paddingVertical: 8,
+  pinnedImg: { width: 48, height: 48, backgroundColor: colors.surfaceAlt, alignItems: 'center', justifyContent: 'center', overflow: 'hidden' },
+  pinnedPhoto: { width: '100%', height: '100%' },
+  pinnedTitle: { color: colors.text, fontSize: 13.5, fontWeight: '600' },
+  pinnedPrice: { color: colors.accent, fontSize: 13.5, fontWeight: '800', marginTop: 2 },
+
+  saleBar: {
+    flexDirection: 'row', alignItems: 'center', gap: 12,
+    paddingHorizontal: spacing.md, paddingVertical: 10,
+    backgroundColor: colors.surface, borderBottomWidth: 1, borderBottomColor: colors.border,
   },
-  saleBtnText: { color: colors.accentText, fontSize: font.sizeSM, fontWeight: '800' },
-  saleDone: { flex: 1, color: colors.success, fontSize: font.sizeSM, fontWeight: '600' },
-  avatar: { width: 44, height: 44, borderRadius: 22, backgroundColor: colors.surfaceAlt, alignItems: 'center', justifyContent: 'center' },
-  avatarText: { color: colors.text, fontSize: font.sizeMD, fontWeight: '700' },
-  avatarImage: { width: 44, height: 44, borderRadius: 22 },
-  name: { color: colors.text, fontSize: font.sizeMD, fontWeight: '700' },
-  ratingRow: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 2 },
-  rating: { color: colors.textMuted, fontSize: font.sizeSM },
+  saleText: { flex: 1, color: colors.textSub, fontSize: 12.5, lineHeight: 17 },
+  saleBtn: { height: 36, paddingHorizontal: 10, backgroundColor: colors.accent, alignItems: 'center', justifyContent: 'center' },
+  saleBtnText: { ...type.monoMedium, color: colors.accentText, fontSize: 10.5 },
+  saleDoneBar: { paddingHorizontal: spacing.md, paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: colors.border },
+  saleDone: { color: colors.success, fontSize: 13, fontWeight: '600' },
 
-  feed: { padding: spacing.lg, gap: spacing.md },
-  system: { backgroundColor: colors.surface, borderRadius: radius.lg, padding: spacing.md, flexDirection: 'row', gap: spacing.md },
-  systemBrand: { color: colors.accent, fontSize: font.sizeSM, fontWeight: '800' },
-  systemText: { flex: 1, color: colors.textMuted, fontSize: font.sizeSM, lineHeight: 22, textAlign: 'center' },
+  feed: { paddingHorizontal: spacing.md, paddingTop: 14, paddingBottom: 8, gap: 10 },
+  system: {
+    alignSelf: 'center', maxWidth: '90%',
+    backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border,
+    paddingHorizontal: 14, paddingVertical: 10,
+  },
+  systemBrand: { ...type.monoMedium, color: colors.accent, fontSize: 10.5 },
+  systemText: { color: colors.textSub, fontSize: 12.5, lineHeight: 18, textAlign: 'center' },
 
-  productCard: { borderWidth: 1.5, borderColor: colors.accent, borderRadius: radius.lg, overflow: 'hidden' },
-  productTop: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, padding: spacing.md },
-  productImg: { width: 64, height: 64, borderRadius: radius.md, backgroundColor: colors.surfaceAlt, alignItems: 'center', justifyContent: 'center', overflow: 'hidden' },
-  productPhoto: { width: '100%', height: '100%' },
-  productTitle: { color: colors.text, fontSize: font.sizeMD, fontWeight: '700' },
-  productSub: { color: colors.textMuted, fontSize: font.sizeSM, marginTop: 2 },
-  productPrice: { color: colors.accent, fontSize: font.sizeLG, fontWeight: '800', marginTop: 4 },
-
-  bubble: { maxWidth: '78%', borderRadius: radius.lg, paddingHorizontal: spacing.md, paddingVertical: spacing.sm },
+  msg: { maxWidth: '78%' },
+  msgMine: { alignSelf: 'flex-end' },
+  msgTheirs: { alignSelf: 'flex-start' },
+  bubble: { paddingHorizontal: 13, paddingVertical: 10 },
   bubbleIn: { backgroundColor: colors.surface },
   bubbleOut: { backgroundColor: colors.accent },
-  bubbleText: { color: colors.text, fontSize: font.sizeMD, lineHeight: 24 },
-  bubbleImage: { width: 180, height: 180, borderRadius: radius.lg },
-  imageMsg: { gap: 4 },
-  captionBubble: { maxWidth: 180 },
-  time: { color: colors.textFaint, fontSize: font.sizeXS, marginTop: 4 },
+  bubbleText: { color: colors.text, fontSize: 15, lineHeight: 21 },
+  imageMsg: { borderWidth: 1, borderColor: colors.border },
+  bubbleImage: { width: 220, height: 220 },
+  time: { color: colors.textMuted, fontSize: 11, marginTop: 4 },
   hint: { color: colors.textMuted, fontSize: font.sizeSM, textAlign: 'center', paddingVertical: spacing.md },
 
-  inputBarSafe: {
-    backgroundColor: colors.surface,
-    borderTopWidth: 1, borderTopColor: colors.border,
-  },
-  closedNote: { color: colors.textMuted, fontSize: font.sizeSM, textAlign: 'center', padding: spacing.lg },
+  inputBarSafe: { borderTopWidth: 1, borderTopColor: colors.border, backgroundColor: colors.bg },
+  closedNote: { color: colors.textMuted, fontSize: 13.5, textAlign: 'center', paddingHorizontal: 20, paddingVertical: spacing.md },
   inputBar: {
     flexDirection: 'row', alignItems: 'flex-end', gap: spacing.sm,
-    paddingHorizontal: spacing.md, paddingVertical: spacing.sm,
+    paddingHorizontal: 12, paddingTop: 8, paddingBottom: 8,
   },
-  previewRow: {
-    flexDirection: 'row', alignItems: 'flex-start',
-    paddingHorizontal: spacing.md, paddingTop: spacing.sm,
-  },
-  previewImage: { width: 64, height: 64, borderRadius: radius.md },
+  previewRow: { flexDirection: 'row', alignItems: 'flex-start', paddingHorizontal: 12, paddingTop: 8 },
+  previewImage: { width: 76, height: 76 },
   previewRemove: {
     width: 22, height: 22, borderRadius: 11,
-    backgroundColor: 'rgba(0,0,0,0.65)',
+    backgroundColor: colors.text,
     alignItems: 'center', justifyContent: 'center',
-    marginLeft: -11, marginTop: -8,
+    marginLeft: -12, marginTop: -6,
   },
-  attachBtn: {
-    width: 42, height: 42, borderRadius: 21,
-    backgroundColor: colors.surfaceAlt,
-    alignItems: 'center', justifyContent: 'center',
-    marginBottom: 1,
-  },
+  attachBtn: { width: 40, height: 42, alignItems: 'center', justifyContent: 'center' },
   inputWrap: {
     flex: 1,
-    backgroundColor: colors.surfaceAlt,
-    borderRadius: radius.xl,
+    backgroundColor: colors.surface,
     borderWidth: 1, borderColor: colors.border,
-    minHeight: 42, maxHeight: 120,
+    minHeight: 42, maxHeight: 110,
     justifyContent: 'center',
   },
-  input: {
-    color: colors.text, fontSize: font.sizeMD,
-    paddingHorizontal: spacing.md, paddingVertical: 10,
-  },
-  sendBtn: {
-    width: 42, height: 42, borderRadius: 21,
-    backgroundColor: colors.accent,
-    alignItems: 'center', justifyContent: 'center',
-  },
-  sendBtnDisabled: { backgroundColor: colors.surfaceAlt },
+  input: { color: colors.text, fontSize: 15, paddingHorizontal: 12, paddingVertical: 10 },
+  sendBtn: { width: 42, height: 42, backgroundColor: colors.accent, alignItems: 'center', justifyContent: 'center' },
+  sendBtnDisabled: { backgroundColor: colors.surface },
   btnPressed: { opacity: 0.7 },
 
-  viewerOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.92)' },
-  viewerImage: { width: '100%', height: '100%' },
-  viewerCloseSafe: {
-    position: 'absolute', top: 0, right: 0,
-    alignItems: 'flex-end',
+  sheetRow: {
+    flexDirection: 'row', alignItems: 'center', gap: 12,
+    paddingHorizontal: 4, paddingVertical: 15,
+    borderBottomWidth: 1, borderBottomColor: colors.border,
   },
-  viewerClose: {
-    margin: spacing.md,
-    width: 36, height: 36, borderRadius: 18,
-    backgroundColor: 'rgba(255,255,255,0.15)',
-    alignItems: 'center', justifyContent: 'center',
-  },
+  sheetText: { color: colors.text, fontSize: 15.5 },
 });
