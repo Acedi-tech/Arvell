@@ -9,7 +9,7 @@ tags: [logged-in]
 # Редактирование профиля: открыть и выйти без сохранения.
 - tapOn: "Редактировать профиль"
 - extendedWaitUntil:
-    visible: "Никнейм"
+    visible: "Имя"
     timeout: 10000
 - assertVisible: "Телефон"
 - tapOn: "Назад"

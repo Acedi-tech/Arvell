@@ -17,6 +17,8 @@ tags: [server, buyer]
     timeout: 20000
 # Фото в чат.
 - tapOn: "Прикрепить фото"
+# Editorial: скрепка открывает шторку «Фото / Камера».
+- tapOn: "Фото"
 - runFlow: ../subflows/pick-photo.yaml
 - runFlow:
     when:

@@ -5,14 +5,15 @@ tags: [server, seller]
 ---
 - runFlow: ../subflows/launch.yaml
 - tapOn: "Профиль"
-- tapOn: "Мои объявления"
+- tapOn: "Объявления"
 - extendedWaitUntil:
     visible: ".*${PRODUCT}.*"
     timeout: 20000
 - tapOn:
     text: "Меню объявления"
     index: 0
-- tapOn: "Удалить объявление"
+# В меню карточки пункт называется просто «Удалить» (Editorial).
+- tapOn: "Удалить"
 - extendedWaitUntil:
     visible: "Удалить объявление?"
     timeout: 5000

@@ -9,7 +9,7 @@ name: 11-catalog-search
 - extendedWaitUntil:
     visible: "Категории"
     timeout: 10000
-- tapOn: "Поиск брендов..."
+- tapOn: "Поиск в каталоге..."
 - tapOn: "Поиск брендов..."
 - inputText: "Nike"
 - extendedWaitUntil:

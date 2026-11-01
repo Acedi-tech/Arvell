@@ -9,19 +9,21 @@ tags: [server, seller]
     env:
       PHONE: ${SELLER_PHONE}
 - assertVisible: "Продавец"
-- tapOn: "Мои объявления"
-- tapOn: "\\+ Добавить товар"
+- tapOn: "Объявления"
+- tapOn: "Добавить товар"
 - extendedWaitUntil:
     visible: "Новый товар"
     timeout: 10000
 - tapOn: "Выберите категорию"
 - tapOn: "Обувь › Кроссовки"
-# Фото: системный выбор Android, «ТЕСТ QA» — самые свежие в галерее.
+# Фото: лист «Камера / Галерея», затем системный выбор Android, «ТЕСТ QA» —
+# самые свежие в галерее.
 - tapOn: "Добавить фото"
+- tapOn: "Галерея"
 - runFlow: ../subflows/pick-photo.yaml
 # Счётчик мог уехать за верх экрана, если форма прокрутилась после выбора.
 - scrollUntilVisible:
-    element: "Фотографии \\(1/.*"
+    element: "Фотографии · 1/.*"
     direction: UP
     timeout: 15000
 - tapOn: "Например, Air Max 90"
@@ -29,20 +31,17 @@ tags: [server, seller]
 # Enter закрывает клавиатуру однострочного поля; hideKeyboard жмёт
 # системный «Назад» и без клавиатуры (уводил с анкеты на S9, 21.10).
 - pressKey: Enter
-- tapOn: "Выберите цвет"
-- tapOn: "Чёрный"
+# Editorial: размер — чипы системы и значения, цвет — кружки (подпись в
+# accessibilityLabel), состояние — чипы. Порядок: размер → цвет → цена.
 - scrollUntilVisible:
-    element: "Выберите систему"
+    element: "Обувь, EU"
     centerElement: true
-- tapOn: "Выберите систему"
 - tapOn: "Обувь, EU"
-# Поле размера появляется у нижнего края — под закреплённой «Опубликовать».
-- scrollUntilVisible:
-    element: "Выберите размер"
-    centerElement: true
-- tapOn: "Выберите размер"
-# Список размеров прокручивается внутри формы — берём первый, он виден сразу.
 - tapOn: "16"
+- scrollUntilVisible:
+    element: "Чёрный"
+    centerElement: true
+- tapOn: "Чёрный"
 - scrollUntilVisible:
     element: "8900"
     centerElement: true

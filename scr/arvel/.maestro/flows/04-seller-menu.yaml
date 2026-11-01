@@ -10,11 +10,11 @@ tags: [seller]
     timeout: 10000
 - runFlow:
     when:
-      visible: "Мои объявления"
+      visible: "Объявления"
     commands:
       - assertVisible: "Продавец"
       - assertVisible: "Продажи"
-      - tapOn: "Мои объявления"
+      - tapOn: "Объявления"
       - extendedWaitUntil:
           notVisible: "Редактировать профиль"
           timeout: 10000
