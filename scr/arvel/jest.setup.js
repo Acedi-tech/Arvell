@@ -40,3 +40,11 @@ jest.mock('expo-secure-store', () => {
     deleteItemAsync: jest.fn(async (k) => { store.delete(k); }),
   };
 });
+
+jest.mock('@react-native-firebase/messaging', () => ({
+  getMessaging: jest.fn(() => ({})),
+  requestPermission: jest.fn(async () => 1),
+  getToken: jest.fn(async () => 'test-fcm-token'),
+  onTokenRefresh: jest.fn(() => () => {}),
+  AuthorizationStatus: { NOT_DETERMINED: -1, DENIED: 0, AUTHORIZED: 1, PROVISIONAL: 2, EPHEMERAL: 3 },
+}));

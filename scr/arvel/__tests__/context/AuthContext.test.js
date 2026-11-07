@@ -13,6 +13,10 @@ jest.mock('../../src/api/auth', () => ({
 }));
 jest.mock('../../src/api/me', () => ({ getMe: jest.fn(), updateMe: jest.fn(), deleteMe: jest.fn() }));
 jest.mock('../../src/api/shops', () => ({ updateMyShop: jest.fn() }));
+jest.mock('../../src/api/devices', () => ({
+  registerDevice: jest.fn(async () => null),
+  unregisterDevice: jest.fn(async () => null),
+}));
 
 const authApi = require('../../src/api/auth');
 const meApi = require('../../src/api/me');
@@ -283,6 +287,23 @@ describe('выход и истечение сессии', () => {
     await waitFor(() => expect(hook.result.current.isLoggedIn).toBe(true));
     return hook;
   };
+
+  it('после входа телефон регистрируется для пушей, при выходе снимается', async () => {
+    const devicesApi = require('../../src/api/devices');
+    devicesApi.registerDevice.mockClear();
+    devicesApi.unregisterDevice.mockClear();
+    const { result } = await loggedIn();
+    await waitFor(() => expect(devicesApi.registerDevice).toHaveBeenCalledWith('test-fcm-token', 'ios'));
+    let tokenAtUnregister;
+    devicesApi.unregisterDevice.mockImplementation(async () => {
+      tokenAtUnregister = await storedAccess();
+      return null;
+    });
+    await act(async () => { await result.current.signOut(); });
+    expect(devicesApi.unregisterDevice).toHaveBeenCalledWith('test-fcm-token');
+    // Снимаем, пока сессия ещё жива: DELETE /me/devices требует токен.
+    expect(tokenAtUnregister).toBeTruthy();
+  });
 
   it('signOut стирает сессию и отзывает refresh-токен на сервере', async () => {
     const { result } = await loggedIn();

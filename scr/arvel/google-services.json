@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "788005273587",
+    "project_id": "arvell-1eb51",
+    "storage_bucket": "arvell-1eb51.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:788005273587:android:999d4357859494cf179c86",
+        "android_client_info": {
+          "package_name": "com.arvell.app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyB0Q8Rx41PdNmE4FDASMjzOmjPe7YOCCxc"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

@@ -168,3 +168,12 @@ describe('api/media.uploadImage', () => {
       .rejects.toMatchObject({ code: 'NETWORK_ERROR', status: 0 });
   });
 });
+describe('api/devices — push-адреса', () => {
+  const devices = require('../../src/api/devices');
+  it('FCM-токен экранируется в пути', () => {
+    devices.registerDevice('abc:APA91/x', 'android');
+    expect(lastCall()).toEqual(['/me/devices/abc%3AAPA91%2Fx', { method: 'PUT', body: { platform: 'android' } }]);
+    devices.unregisterDevice('abc:APA91/x');
+    expect(lastCall()).toEqual(['/me/devices/abc%3AAPA91%2Fx', { method: 'DELETE' }]);
+  });
+});

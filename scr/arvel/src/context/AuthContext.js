@@ -4,6 +4,7 @@ import * as meApi from '../api/me';
 import { updateMyShop } from '../api/shops';
 import { hydrateSession, setSession, clearSession, setOnSessionExpired } from '../api/client';
 import { getCachedUser, setCachedUser } from '../storage/tokenStorage';
+import { enablePush, disablePush } from '../utils/push';
 
 // Дольше этого холодный старт не ждёт ответа GET /me (см. useEffect ниже).
 const BOOTSTRAP_TIMEOUT_MS = 4000;
@@ -170,6 +171,24 @@ export function AuthProvider({ children }) {
     if (isLoggedIn && user) setCachedUser(user);
   }, [isLoggedIn, user]);
 
+  // Пуши: после входа регистрируем токен устройства на сервере, при выходе
+  // (signOut) снимаем. Завязано на id, а не на весь user — правка профиля
+  // не должна заново дёргать регистрацию.
+  const userId = isLoggedIn ? user?.id : null;
+  useEffect(() => {
+    if (!userId) return undefined;
+    let unsubscribe = null;
+    let cancelled = false;
+    enablePush().then((fn) => {
+      if (cancelled) fn();
+      else unsubscribe = fn;
+    });
+    return () => {
+      cancelled = true;
+      if (unsubscribe) unsubscribe();
+    };
+  }, [userId]);
+
   const registerPhone = useCallback(async (phone) => {
     await authApi.registerPhone(phone);
     setPendingPhone(phone);
@@ -267,6 +286,9 @@ export function AuthProvider({ children }) {
   }, []);
 
   const signOut = useCallback(async () => {
+    // Пока токены живы — снимаем push-адрес, чтобы чужие уведомления не
+    // приходили на телефон после выхода.
+    await disablePush();
     const { refreshToken } = await hydrateSession();
     sessionEpoch.current += 1;
     setIsLoggedIn(false);
