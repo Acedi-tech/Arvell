@@ -136,7 +136,7 @@ export default function ChatScreen({ navigation }) {
             </Pressable>
           )}
         </View>
-        <Text style={styles.title}>{selectMode ? `Выбрано: ${n}` : 'Чаты'}</Text>
+        <Text style={styles.title} numberOfLines={1}>{selectMode ? `Выбрано: ${n}` : 'Чаты'}</Text>
         <View style={[styles.headerSide, styles.headerRight]}>
           {!selectMode && threads.length > 0 && (
             <Pressable hitSlop={8} onPress={toggleSelectMode}>
@@ -229,7 +229,9 @@ const styles = StyleSheet.create({
     minHeight: 52, flexDirection: 'row', alignItems: 'center', paddingHorizontal: spacing.md,
     borderBottomWidth: 1, borderBottomColor: colors.border,
   },
-  title: { ...type.display, color: colors.accent, fontSize: 16, textAlign: 'center' },
+  // flex: 1 — заголовок занимает середину между боковыми слотами, иначе
+  // строка прижималась влево, а «Выбрать» вставало сразу за «Чаты».
+  title: { ...type.display, flex: 1, color: colors.accent, fontSize: 16, textAlign: 'center' },
   headerSide: { width: 90 },
   headerRight: { alignItems: 'flex-end' },
   action: { color: colors.accent, fontSize: 14.5, fontWeight: '600' },
