@@ -103,35 +103,40 @@ export default function ZoomableImage({ uri, style, onSingleTap }) {
   return (
     <TapGestureHandler onHandlerStateChange={onSingleTapStateChange} waitFor={doubleTapRef}>
       <TapGestureHandler ref={doubleTapRef} numberOfTaps={2} onHandlerStateChange={onDoubleTapStateChange}>
-        <PanGestureHandler
-          ref={panRef}
-          simultaneousHandlers={pinchRef}
-          onGestureEvent={onPanEvent}
-          onHandlerStateChange={onPanStateChange}
-          minPointers={1}
-          maxPointers={1}
-          enabled={zoomed}
-        >
-          <PinchGestureHandler
-            ref={pinchRef}
-            simultaneousHandlers={panRef}
-            onGestureEvent={onPinchEvent}
-            onHandlerStateChange={onPinchStateChange}
+        {/* Native Animated.event handlers must attach to separate native views. */}
+        <Animated.View style={styles.flex}>
+          <PanGestureHandler
+            ref={panRef}
+            simultaneousHandlers={pinchRef}
+            onGestureEvent={onPanEvent}
+            onHandlerStateChange={onPanStateChange}
+            minPointers={1}
+            maxPointers={1}
+            enabled={zoomed}
           >
             <Animated.View style={styles.flex}>
-              <Animated.Image
-                source={{ uri }}
-                resizeMode="contain"
-                style={[style, { transform: [{ translateX }, { translateY }, { scale }] }]}
-              />
+              <PinchGestureHandler
+                ref={pinchRef}
+                simultaneousHandlers={panRef}
+                onGestureEvent={onPinchEvent}
+                onHandlerStateChange={onPinchStateChange}
+              >
+                <Animated.View style={styles.flex}>
+                  <Animated.Image
+                    source={{ uri }}
+                    resizeMode="contain"
+                    style={[style, { transform: [{ translateX }, { translateY }, { scale }] }]}
+                  />
+                </Animated.View>
+              </PinchGestureHandler>
             </Animated.View>
-          </PinchGestureHandler>
-        </PanGestureHandler>
+          </PanGestureHandler>
+        </Animated.View>
       </TapGestureHandler>
     </TapGestureHandler>
   );
 }
 
 const styles = StyleSheet.create({
-  flex: { flex: 1, alignItems: 'center', justifyContent: 'center' },
+  flex: { flex: 1, width: '100%', alignItems: 'center', justifyContent: 'center' },
 });

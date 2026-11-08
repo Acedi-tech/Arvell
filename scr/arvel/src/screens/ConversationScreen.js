@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
-import { View, StyleSheet, Pressable, ScrollView, Image, Alert, Linking } from 'react-native';
+import { View, StyleSheet, Pressable, ScrollView, Image, Alert, Linking, ActivityIndicator } from 'react-native';
 import { Text, TextInput } from '../components/AppText';
 import * as ImagePicker from 'expo-image-picker';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -59,6 +59,8 @@ export default function ConversationScreen({ navigation, route }) {
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState(null);
   const [sending, setSending] = useState(false);
+  const sendInFlight = useRef(false);
+  const openingConversation = useRef(null);
   // Диалог либо открыт из списка (id уже известен), либо заводится по товару
   // со страницы «Купить» — POST /conversations идемпотентен и вернёт
   // существующую ветку, если она уже есть.
@@ -70,38 +72,54 @@ export default function ConversationScreen({ navigation, route }) {
   // подтвердить продажу именно этому покупателю именно этого товара.
   const [conv, setConv] = useState(null);
 
+  // Loading and Send share the same opening request. A slow/failed opening
+  // must not leave a populated composer with a silently disabled Send button.
+  const ensureConversation = useCallback(async () => {
+    if (route?.params?.conversationId) return route.params.conversationId;
+    if (!product?.id) throw new Error('Этот диалог пока недоступен — переписка открывается со страницы товара.');
+    if (openingConversation.current?.productId !== product.id) {
+      const promise = openConversation(product.id).then((opened) => {
+        if (!opened?.id) throw new Error('Не удалось открыть переписку. Попробуйте ещё раз.');
+        setConv(opened);
+        setClosed(opened.status === 'closed');
+        setConversationId(opened.id);
+        if (opened.seller?.profile_pic_url) setAvatar(resolveMediaUrl(opened.seller.profile_pic_url));
+        return opened.id;
+      });
+      const pending = { productId: product.id, promise };
+      openingConversation.current = pending;
+      promise.catch(() => {
+        if (openingConversation.current === pending) openingConversation.current = null;
+      });
+    }
+    return openingConversation.current.promise;
+  }, [route?.params?.conversationId, product?.id]);
+
   const load = useCallback(async () => {
+    setLoading(true);
     setLoadError(null);
     try {
-      let id = route?.params?.conversationId || null;
-      if (id) {
+      const id = await ensureConversation();
+      if (route?.params?.conversationId) {
         getConversation(id).then((c) => {
           setConv(c);
           setClosed(c?.status === 'closed');
         }).catch(() => {});
-      } else if (product?.id) {
-        const opened = await openConversation(product.id);
-        id = opened.id;
-        setConv(opened);
-        setClosed(opened?.status === 'closed');
-        if (opened.seller?.profile_pic_url) setAvatar(resolveMediaUrl(opened.seller.profile_pic_url));
-      }
-      if (!id) {
-        // Переписка без товара (например поддержка) бэкендом не поддержана:
-        // диалоги заводятся только по конкретному товару.
-        setLoadError('Этот диалог пока недоступен — переписка открывается со страницы товара.');
-        return;
       }
       setConversationId(id);
       const res = await listMessages(id, { limit: 100 });
-      setMessages(res?.data ?? []);
+      setMessages((current) => {
+        const merged = new Map(current.map((m) => [m.id, m]));
+        for (const message of res?.data ?? []) merged.set(message.id, message);
+        return [...merged.values()].sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
+      });
       markConversationRead(id).then(refreshUnread).catch(() => {});
     } catch (e) {
       setLoadError(e?.message || 'Не удалось загрузить переписку.');
     } finally {
       setLoading(false);
     }
-  }, [route?.params?.conversationId, product?.id, refreshUnread]);
+  }, [ensureConversation, route?.params?.conversationId, refreshUnread]);
 
   useEffect(() => { load(); }, [load]);
 
@@ -155,12 +173,14 @@ export default function ConversationScreen({ navigation, route }) {
 
   const send = async () => {
     const t = text.trim();
-    if ((!t && !pendingImage) || !conversationId || sending) return;
+    if ((!t && !pendingImage) || sendInFlight.current || closed) return;
+    sendInFlight.current = true;
     const image = pendingImage;
     setText('');
     setPendingImage(null);
     setSending(true);
     try {
+      const id = conversationId || await ensureConversation();
       // Фото уезжает в хранилище тем же путём, что и картинки товаров, а в
       // сообщение попадает ссылка: отдельного поля под вложение у /messages
       // нет, тело сообщения — единственное, что принимает бэкенд.
@@ -171,10 +191,11 @@ export default function ConversationScreen({ navigation, route }) {
         const url = await uploadImage(await prepareForUpload({ uri: image }, {
           maxWidth: maxImageWidth, maxHeight: maxImageHeight, maxBytes: maxImageBytes,
         }));
-        sent.push(await sendMessage(conversationId, url));
+        sent.push(await sendMessage(id, url));
       }
-      if (t) sent.push(await sendMessage(conversationId, t));
-      setMessages((m) => [...m, ...sent]);
+      if (t) sent.push(await sendMessage(id, t));
+      setMessages((m) => [...new Map([...m, ...sent].map((message) => [message.id, message])).values()]);
+      setLoadError(null);
       setTimeout(() => feedRef.current?.scrollToEnd({ animated: true }), 50);
     } catch (e) {
       // Возвращаем написанное в поле, чтобы ничего не пропало
@@ -187,6 +208,7 @@ export default function ConversationScreen({ navigation, route }) {
         Alert.alert('Не отправлено', e?.message || 'Попробуйте ещё раз.');
       }
     } finally {
+      sendInFlight.current = false;
       setSending(false);
     }
   };
@@ -323,6 +345,11 @@ export default function ConversationScreen({ navigation, route }) {
 
           {loading && <Text style={styles.hint}>Загружаем переписку...</Text>}
           {!!loadError && <Text style={styles.hint}>{loadError}</Text>}
+          {!!loadError && !loading && (
+            <Pressable accessibilityRole="button" onPress={load} style={styles.retry}>
+              <Text style={styles.retryText}>Повторить загрузку</Text>
+            </Pressable>
+          )}
 
           {messages.map((m) => {
             const mine = !!user?.id && m.sender_id === user.id;
@@ -378,14 +405,18 @@ export default function ConversationScreen({ navigation, route }) {
               <Pressable
                 style={({ pressed }) => [
                   styles.sendBtn,
-                  !text.trim() && !pendingImage && styles.sendBtnDisabled,
+                  ((!text.trim() && !pendingImage) || sending) && styles.sendBtnDisabled,
                   pressed && styles.btnPressed,
                 ]}
                 accessibilityLabel="Отправить"
+                accessibilityRole="button"
+                accessibilityState={{ disabled: (!text.trim() && !pendingImage) || sending, busy: sending }}
                 onPress={send}
-                disabled={(!text.trim() && !pendingImage) || !conversationId || sending}
+                disabled={(!text.trim() && !pendingImage) || sending}
               >
-                <SendIcon size={19} color={(text.trim() || pendingImage) ? colors.accentText : '#555'} />
+                {sending ? <ActivityIndicator size="small" color={colors.accent} /> : (
+                  <SendIcon size={19} color={(text.trim() || pendingImage) ? colors.accentText : '#555'} />
+                )}
               </Pressable>
             </View>
             </>
@@ -474,6 +505,8 @@ const styles = StyleSheet.create({
   bubbleImage: { width: 220, height: 220 },
   time: { color: colors.textMuted, fontSize: 11, marginTop: 4 },
   hint: { color: colors.textMuted, fontSize: font.sizeSM, textAlign: 'center', paddingVertical: spacing.md },
+  retry: { alignSelf: 'center', padding: 12 },
+  retryText: { color: colors.accent, fontSize: 14 },
 
   inputBarSafe: { borderTopWidth: 1, borderTopColor: colors.border, backgroundColor: colors.bg },
   closedNote: { color: colors.textMuted, fontSize: 13.5, textAlign: 'center', paddingHorizontal: 20, paddingVertical: spacing.md },

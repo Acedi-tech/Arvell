@@ -2,3 +2,4 @@ coverage/
 checklist-report.csv
 .telegram.json
 .maestro/out/
+dist-check*/

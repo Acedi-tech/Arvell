@@ -313,6 +313,48 @@ forEachRole(({ t }) => {
       expect(messageInput().props.value).toBe('');
     });
 
+    it('Send waits for slow conversation opening instead of being silently disabled', async () => {
+      let finishOpening;
+      chatApi.openConversation.mockImplementationOnce(() => new Promise((resolve) => { finishOpening = resolve; }));
+      render(<ConversationScreen navigation={navigation} route={{ params: { product: { id: 'p1' } } }} />);
+      await waitFor(() => expect(chatApi.openConversation).toHaveBeenCalledTimes(1));
+      fireEvent.changeText(messageInput(), 'Привет');
+      expect(screen.getByLabelText('Отправить')).toBeEnabled();
+      fireEvent.press(screen.getByLabelText('Отправить'));
+      expect(screen.getByLabelText('Отправить')).toBeDisabled();
+      expect(chatApi.sendMessage).not.toHaveBeenCalled();
+      await act(async () => { finishOpening({ id: 'c-slow', status: 'open' }); });
+      await waitFor(() => expect(chatApi.sendMessage).toHaveBeenCalledWith('c-slow', 'Привет'));
+      expect(chatApi.openConversation).toHaveBeenCalledTimes(1);
+      expect(await screen.findByText('Привет')).toBeTruthy();
+    });
+
+    it('Send retries failed conversation opening and reports errors without losing the draft', async () => {
+      chatApi.openConversation.mockRejectedValueOnce(new Error('Нет сети'));
+      await renderConversation({ params: { product: { id: 'p1' } } });
+      expect(screen.getByText('Нет сети')).toBeTruthy();
+      expect(screen.getByText('Повторить загрузку')).toBeTruthy();
+      fireEvent.changeText(messageInput(), 'Не терять');
+      expect(screen.getByLabelText('Отправить')).toBeEnabled();
+      fireEvent.press(screen.getByLabelText('Отправить'));
+      await waitFor(() => expect(chatApi.sendMessage).toHaveBeenCalledWith('c-new', 'Не терять'));
+      expect(chatApi.openConversation).toHaveBeenCalledTimes(2);
+      expect(await screen.findByText('Не терять')).toBeTruthy();
+    });
+
+    it('A late history response does not erase a message sent while history was loading', async () => {
+      let finishHistory;
+      chatApi.listMessages.mockImplementationOnce(() => new Promise((resolve) => { finishHistory = resolve; }));
+      render(<ConversationScreen navigation={navigation} route={fromList} />);
+      await waitFor(() => expect(chatApi.listMessages).toHaveBeenCalled());
+      fireEvent.changeText(messageInput(), 'Новое сообщение');
+      fireEvent.press(screen.getByLabelText('Отправить'));
+      expect(await screen.findByText('Новое сообщение')).toBeTruthy();
+      await act(async () => { finishHistory({ data: messages }); });
+      expect(screen.getByText('Новое сообщение')).toBeTruthy();
+      expect(screen.getByText('Здравствуйте!')).toBeTruthy();
+    });
+
     it('Conversation: закрытый чат — поля ввода нет, объяснение есть', async () => {
       chatApi.getConversation.mockResolvedValue({ id: 'c1', status: 'closed' });
       await renderConversation();
