@@ -37,6 +37,11 @@ tags: [server, seller]
     element: "Обувь, EU"
     centerElement: true
 - tapOn: "Обувь, EU"
+# Клавиатура после названия модели закрывается не всегда (09.11 на Redmi
+# осталась открытой и накрыла размеры) — докручиваем до «16» явно.
+- scrollUntilVisible:
+    element: "16"
+    centerElement: true
 - tapOn: "16"
 - scrollUntilVisible:
     element: "Чёрный"
