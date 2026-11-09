@@ -3,6 +3,7 @@ import { AppState } from 'react-native';
 import { listConversations } from '../api/chat';
 import { loadHiddenChats } from '../storage/chatStorage';
 import { useAuth } from './AuthContext';
+import { onChatActivity } from '../utils/chatEvents';
 
 // Счётчик непрочитанных на вкладке «Чат». Раньше там стояла константа «3»:
 // бейдж показывал тройку всегда, сколько бы сообщений ни пришло и сколько бы
@@ -11,8 +12,8 @@ import { useAuth } from './AuthContext';
 
 const ChatUnreadContext = createContext({ unread: 0, refresh: () => {} });
 
-// Пуш-канала у приложения нет, поэтому счётчик обновляется по таймеру и
-// при возврате приложения из фона — этого хватает для бейджа.
+// Счётчик обновляется по таймеру, при возврате приложения из фона и сразу
+// по пушу, пришедшему при открытом приложении (onChatActivity).
 const REFRESH_MS = 30000;
 
 export function ChatUnreadProvider({ children }) {
@@ -46,9 +47,12 @@ export function ChatUnreadProvider({ children }) {
     const sub = AppState.addEventListener('change', (state) => {
       if (state === 'active') refresh();
     });
+    // Пуш при открытом приложении — бейдж обновляем сразу, не ждём таймера.
+    const offPush = onChatActivity(() => refresh());
     return () => {
       clearInterval(timer);
       sub.remove();
+      offPush();
     };
   }, [refresh, isLoggedIn]);
 

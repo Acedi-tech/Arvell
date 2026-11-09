@@ -6,7 +6,7 @@ import * as SystemUI from 'expo-system-ui';
 import * as NavigationBar from 'expo-navigation-bar';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
-import { NavigationContainer, DarkTheme } from '@react-navigation/native';
+import { NavigationContainer, DarkTheme, createNavigationContainerRef } from '@react-navigation/native';
 import { AuthProvider } from './src/context/AuthContext';
 import { FavoritesProvider } from './src/context/FavoritesContext';
 import { ProductsProvider } from './src/context/ProductsContext';
@@ -15,6 +15,9 @@ import { AppConfigProvider } from './src/context/AppConfigContext';
 import { ChatUnreadProvider } from './src/context/ChatUnreadContext';
 import RootNavigator from './src/navigation/RootNavigator';
 import linking from './src/navigation/linking';
+import PushBridge from './src/components/PushBridge';
+
+const navigationRef = createNavigationContainerRef();
 import { colors, fontFiles } from './src/theme';
 
 // По умолчанию NavigationContainer использует светлую тему React Navigation
@@ -64,9 +67,10 @@ export default function App() {
               <MyListingsProvider>
                 <FavoritesProvider>
                   <ChatUnreadProvider>
-                    <NavigationContainer theme={navTheme} linking={linking}>
+                    <NavigationContainer ref={navigationRef} theme={navTheme} linking={linking}>
                       <StatusBar style="light" backgroundColor={colors.bg} />
                       <RootNavigator />
+                      <PushBridge navigationRef={navigationRef} />
                     </NavigationContainer>
                   </ChatUnreadProvider>
                 </FavoritesProvider>

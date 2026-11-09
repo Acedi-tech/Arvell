@@ -1,8 +1,9 @@
 import React, { useState, useCallback } from 'react';
-import { View, FlatList, StyleSheet, Pressable, Alert } from 'react-native';
+import { View, FlatList, StyleSheet, Pressable, Alert, AppState } from 'react-native';
 import { Text, TextInput } from '../components/AppText';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect } from '@react-navigation/native';
+import { onChatActivity } from '../utils/chatEvents';
 import { colors, spacing, font, type } from '../theme';
 import { SearchIcon, ChatIcon } from '../components/Icons';
 import Avatar from '../components/Avatar';
@@ -15,6 +16,9 @@ import { useChatUnread } from '../context/ChatUnreadContext';
 import { formatTime } from '../utils/chatFormat';
 import { resolveMediaUrl } from '../utils/media';
 import { loadHiddenChats, hideChats } from '../storage/chatStorage';
+
+// Как часто список чатов сам спрашивает сервер, пока открыт.
+const CHATS_POLL_MS = 5000;
 
 export default function ChatScreen({ navigation }) {
   const [query, setQuery] = useState('');
@@ -46,28 +50,47 @@ export default function ChatScreen({ navigation }) {
     };
   }, [user?.id]);
 
+  // Пока экран открыт, список обновляется сам: раз в CHATS_POLL_MS, при
+  // возврате приложения из фона и сразу по пушу (onChatActivity). Без этого
+  // новые сообщения появлялись, только если уйти с экрана и вернуться.
+  const loadThreads = useCallback(async (isAlive = () => true) => {
+    try {
+      const [res, hidden] = await Promise.all([
+        listConversations({ limit: 50 }),
+        loadHiddenChats(),
+      ]);
+      if (!isAlive()) return;
+      setError(null);
+      setThreads((res?.data ?? [])
+        .filter((c) => !hidden.includes(c.id))
+        .map(mapConversation));
+    } catch (e) {
+      // Фоновое обновление не затирает уже показанный список ошибкой.
+      if (isAlive()) setError((prev) => prev ?? (e?.message || 'Не удалось загрузить чаты.'));
+    } finally {
+      if (isAlive()) setLoading(false);
+    }
+  }, [mapConversation]);
+
   useFocusEffect(
     useCallback(() => {
       let alive = true;
-      (async () => {
-        setError(null);
-        try {
-          const [res, hidden] = await Promise.all([
-            listConversations({ limit: 50 }),
-            loadHiddenChats(),
-          ]);
-          if (!alive) return;
-          setThreads((res?.data ?? [])
-            .filter((c) => !hidden.includes(c.id))
-            .map(mapConversation));
-        } catch (e) {
-          if (alive) setError(e?.message || 'Не удалось загрузить чаты.');
-        } finally {
-          if (alive) setLoading(false);
-        }
-      })();
-      return () => { alive = false; };
-    }, [mapConversation]),
+      const isAlive = () => alive;
+      loadThreads(isAlive);
+      const timer = setInterval(() => {
+        if (AppState.currentState === 'active') loadThreads(isAlive);
+      }, CHATS_POLL_MS);
+      const offPush = onChatActivity(() => loadThreads(isAlive));
+      const sub = AppState.addEventListener('change', (state) => {
+        if (state === 'active') loadThreads(isAlive);
+      });
+      return () => {
+        alive = false;
+        clearInterval(timer);
+        offPush();
+        sub.remove();
+      };
+    }, [loadThreads]),
   );
   const [selectMode, setSelectMode] = useState(false);
   const [selectedIds, setSelectedIds] = useState([]);

@@ -79,3 +79,38 @@ export async function disablePush(timeoutMs = 3000) {
     // Сервер сам отключит мёртвый токен при следующей рассылке.
   }
 }
+
+// Сервер кладёт в data пуша то же, что в payload уведомления:
+// conversation_id, sender_name, preview и т. д.
+export function conversationIdOf(message) {
+  const d = message?.data || {};
+  return d.conversation_id || d.conversationId || null;
+}
+
+// Пуш, пришедший при открытом приложении. Система его в этом случае не
+// показывает (ни Android, ни iOS) — показываем сами. Возвращает отписку.
+export function subscribeForegroundMessages(handler) {
+  const m = loadMessaging();
+  if (!m) return () => {};
+  try {
+    return m.onMessage(m.getMessaging(), handler);
+  } catch {
+    return () => {};
+  }
+}
+
+// Нажатие на пуш: из фона (onNotificationOpenedApp) и с холодного старта
+// (getInitialNotification). Возвращает отписку.
+export function subscribeNotificationOpens(handler) {
+  const m = loadMessaging();
+  if (!m) return () => {};
+  try {
+    const messaging = m.getMessaging();
+    m.getInitialNotification(messaging)
+      .then((msg) => { if (msg) handler(msg); })
+      .catch(() => {});
+    return m.onNotificationOpenedApp(messaging, handler);
+  } catch {
+    return () => {};
+  }
+}

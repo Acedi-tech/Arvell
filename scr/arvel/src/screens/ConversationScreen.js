@@ -1,8 +1,9 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
-import { View, StyleSheet, Pressable, ScrollView, Image, Alert, Linking, ActivityIndicator } from 'react-native';
+import { View, StyleSheet, Pressable, ScrollView, Image, Alert, Linking, ActivityIndicator, AppState } from 'react-native';
 import { Text, TextInput } from '../components/AppText';
 import * as ImagePicker from 'expo-image-picker';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useFocusEffect } from '@react-navigation/native';
 import { colors, spacing, font, type } from '../theme';
 import {
   BackIcon, StarIcon, PhoneCallIcon, SendIcon, ImageIcon, CameraIcon,
@@ -25,6 +26,10 @@ import { listMySales, confirmSale } from '../api/purchases';
 import { prepareForUpload } from '../utils/imageUpload';
 import { resolveMediaUrl } from '../utils/media';
 import { formatTime, isImageBody } from '../utils/chatFormat';
+import { onChatActivity } from '../utils/chatEvents';
+
+// Как часто открытая переписка спрашивает сервер о новых сообщениях.
+const MESSAGES_POLL_MS = 4000;
 
 export default function ConversationScreen({ navigation, route }) {
   const { maxImageBytes, maxImageWidth, maxImageHeight } = useAppConfig();
@@ -122,6 +127,48 @@ export default function ConversationScreen({ navigation, route }) {
   }, [ensureConversation, route?.params?.conversationId, refreshUnread]);
 
   useEffect(() => { load(); }, [load]);
+
+  // Пока переписка открыта, новые сообщения собеседника подтягиваются сами:
+  // раз в MESSAGES_POLL_MS, при возврате из фона и сразу по пушу.
+  const messagesRef = useRef(messages);
+  messagesRef.current = messages;
+  const pullMessages = useCallback(async () => {
+    const id = conversationId;
+    if (!id) return;
+    try {
+      const res = await listMessages(id, { limit: 100 });
+      const incoming = res?.data ?? [];
+      const known = new Set(messagesRef.current.map((m) => m.id));
+      if (!incoming.some((m) => !known.has(m.id))) return;
+      setMessages((current) => {
+        const merged = new Map(current.map((m) => [m.id, m]));
+        for (const message of incoming) merged.set(message.id, message);
+        return [...merged.values()].sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
+      });
+      markConversationRead(id).then(refreshUnread).catch(() => {});
+    } catch {
+      // Фоновый опрос молчит: ошибка сети не должна мешать переписке.
+    }
+  }, [conversationId, refreshUnread]);
+
+  useFocusEffect(
+    useCallback(() => {
+      const timer = setInterval(() => {
+        if (AppState.currentState === 'active') pullMessages();
+      }, MESSAGES_POLL_MS);
+      const offPush = onChatActivity(({ conversationId: pushedId } = {}) => {
+        if (!pushedId || pushedId === conversationId) pullMessages();
+      });
+      const sub = AppState.addEventListener('change', (state) => {
+        if (state === 'active') pullMessages();
+      });
+      return () => {
+        clearInterval(timer);
+        offPush();
+        sub.remove();
+      };
+    }, [pullMessages, conversationId]),
+  );
 
   // --- Подтверждение продажи (только продавец) ---
   // Без него покупатель не может оставить отзыв: бэкенд открывает отзыв
