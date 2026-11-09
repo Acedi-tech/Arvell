@@ -1,4 +1,4 @@
-import { PermissionsAndroid, Platform } from 'react-native';
+import { AppState, PermissionsAndroid, Platform } from 'react-native';
 import * as devicesApi from '../api/devices';
 
 // Пуши через Firebase Cloud Messaging: сервер рассылает их по FCM-токену,
@@ -38,24 +38,66 @@ async function askPermission(m) {
 
 let currentToken = null;
 
+const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+// iOS: Firebase выдаёт FCM-токен только после того, как Apple выдаст свой
+// APNs-токен. Сразу после входа его ещё нет, и getToken падал — iPhone так и
+// не регистрировался на сервере (09.11: у аккаунта ноль устройств). Поэтому
+// явно регистрируемся у Apple и ждём токен до APNS_WAIT_MS.
+const APNS_WAIT_MS = 15000;
+async function waitForApns(m, messaging) {
+  if (Platform.OS !== 'ios') return;
+  try { await m.registerDeviceForRemoteMessages(messaging); } catch { /* уже зарегистрированы */ }
+  for (let waited = 0; waited < APNS_WAIT_MS; waited += 1000) {
+    try { if (await m.getAPNSToken(messaging)) return; } catch { /* ждём дальше */ }
+    await wait(1000);
+  }
+}
+
+async function registerOnce(m, messaging) {
+  await waitForApns(m, messaging);
+  const token = await m.getToken(messaging);
+  if (!token) throw new Error('Firebase не выдал токен');
+  currentToken = token;
+  await devicesApi.registerDevice(token, Platform.OS);
+}
+
 // Спрашивает разрешение, регистрирует токен на сервере и следит за его
-// обновлением. Возвращает функцию отписки. Ошибки не пробрасывает: без пушей
-// приложение работает как раньше.
+// обновлением. Если регистрация не удалась (нет сети, Apple не успел выдать
+// токен), повторяет при каждом возвращении в приложение. Возвращает функцию
+// отписки. Ошибки не пробрасывает: без пушей приложение работает как раньше.
 export async function enablePush() {
   const m = loadMessaging();
   if (!m) return () => {};
   try {
     if (!(await askPermission(m))) return () => {};
     const messaging = m.getMessaging();
-    const token = await m.getToken(messaging);
-    if (token) {
-      currentToken = token;
-      await devicesApi.registerDevice(token, Platform.OS);
-    }
-    return m.onTokenRefresh(messaging, (fresh) => {
+    let registered = false;
+    let inFlight = false;
+    const attempt = async () => {
+      if (registered || inFlight) return;
+      inFlight = true;
+      try {
+        await registerOnce(m, messaging);
+        registered = true;
+      } catch (e) {
+        console.warn('[push] не удалось зарегистрировать устройство', e?.message ?? e);
+      } finally {
+        inFlight = false;
+      }
+    };
+    await attempt();
+    const offRefresh = m.onTokenRefresh(messaging, (fresh) => {
       currentToken = fresh;
       devicesApi.registerDevice(fresh, Platform.OS).catch(() => {});
     });
+    const sub = AppState.addEventListener('change', (state) => {
+      if (state === 'active') attempt();
+    });
+    return () => {
+      offRefresh();
+      sub.remove();
+    };
   } catch (e) {
     console.warn('[push] не удалось включить пуши', e?.message ?? e);
     return () => {};
