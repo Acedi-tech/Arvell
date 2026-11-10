@@ -47,9 +47,18 @@ jest.mock('@react-native-firebase/messaging', () => ({
   getToken: jest.fn(async () => 'test-fcm-token'),
   registerDeviceForRemoteMessages: jest.fn(async () => {}),
   getAPNSToken: jest.fn(async () => 'test-apns-token'),
+  setAPNSToken: jest.fn(async () => {}),
   onTokenRefresh: jest.fn(() => () => {}),
   onMessage: jest.fn(() => () => {}),
   onNotificationOpenedApp: jest.fn(() => () => {}),
   getInitialNotification: jest.fn(async () => null),
   AuthorizationStatus: { NOT_DETERMINED: -1, DENIED: 0, AUTHORIZED: 1, PROVISIONAL: 2, EPHEMERAL: 3 },
+}));
+
+jest.mock('expo-notifications', () => ({
+  getDevicePushTokenAsync: jest.fn(async () => ({ type: 'ios', data: 'expo-apns-token' })),
+  setNotificationHandler: jest.fn(),
+  addNotificationReceivedListener: jest.fn(() => ({ remove: () => {} })),
+  addNotificationResponseReceivedListener: jest.fn(() => ({ remove: () => {} })),
+  getLastNotificationResponseAsync: jest.fn(async () => null),
 }));

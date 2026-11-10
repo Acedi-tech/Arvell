@@ -70,3 +70,41 @@ describe('пуши: регистрация iPhone', () => {
     spy.mockRestore();
   });
 });
+
+describe('пуши: запасной путь к токену Apple и диагностика', () => {
+  const m = require('@react-native-firebase/messaging');
+  const N = require('expo-notifications');
+  const devices = require('../../src/api/devices');
+
+  it('если Firebase не увидел токен Apple — берём его через Expo и отдаём Firebase', async () => {
+    jest.useFakeTimers();
+    devices.registerDevice.mockClear();
+    m.getToken.mockReset().mockResolvedValue('test-fcm-token');
+    m.getAPNSToken.mockReset().mockResolvedValue(null);
+    const { enablePush, getPushStatus } = require('../../src/utils/push');
+    const p = enablePush();
+    for (let i = 0; i < 15; i += 1) { await Promise.resolve(); jest.advanceTimersByTime(1000); await Promise.resolve(); }
+    jest.useRealTimers();
+    const off = await p;
+    expect(N.getDevicePushTokenAsync).toHaveBeenCalled();
+    expect(m.setAPNSToken).toHaveBeenCalledWith(expect.anything(), 'expo-apns-token', 'unknown');
+    expect(devices.registerDevice).toHaveBeenCalledWith('test-fcm-token', 'ios');
+    const st = getPushStatus();
+    expect(st.apnsSource).toBe('expo');
+    expect(st.server).toBe('ok');
+    off();
+  });
+
+  it('один и тот же пуш от Firebase и от Expo показывается один раз', () => {
+    const { subscribeForegroundMessages } = require('../../src/utils/push');
+    let fromFirebase; let fromExpoCb;
+    m.onMessage.mockImplementationOnce((_, cb) => { fromFirebase = cb; return () => {}; });
+    N.addNotificationReceivedListener.mockImplementationOnce((cb) => { fromExpoCb = cb; return { remove: () => {} }; });
+    const handler = jest.fn();
+    const off = subscribeForegroundMessages(handler);
+    fromFirebase({ data: { message_id: 'm1', conversation_id: 'c1' } });
+    fromExpoCb({ request: { content: { title: 'T', body: 'B', data: {} }, trigger: { payload: { message_id: 'm1', conversation_id: 'c1' } } } });
+    expect(handler).toHaveBeenCalledTimes(1);
+    off();
+  });
+});

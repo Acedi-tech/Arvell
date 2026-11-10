@@ -7,6 +7,7 @@ import ConversationScreen from '../screens/ConversationScreen';
 import ReviewsScreen from '../screens/ReviewsScreen';
 import WriteReviewScreen from '../screens/WriteReviewScreen';
 import DevComponentsScreen from '../screens/DevComponentsScreen';
+import PushDebugScreen from '../screens/PushDebugScreen';
 import AnimatedSplash from '../components/AnimatedSplash';
 import AuthSuccess from '../components/AuthSuccess';
 
@@ -70,6 +71,8 @@ export default function RootNavigator() {
       <Stack.Screen name="WriteReview" component={WriteReviewScreen} />
       {/* Витрина компонентов дизайна — только по ссылке arvell://dev/components */}
       <Stack.Screen name="DevComponents" component={DevComponentsScreen} />
+      {/* Диагностика пушей — только по ссылке arvell://dev/push */}
+      <Stack.Screen name="DevPush" component={PushDebugScreen} />
       <Stack.Screen
         name="Auth"
         component={AuthModal}

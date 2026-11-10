@@ -7,6 +7,7 @@ const linking = {
   config: {
     screens: {
       DevComponents: 'dev/components',
+      DevPush: 'dev/push',
       Main: {
         screens: {
           Feed: {
