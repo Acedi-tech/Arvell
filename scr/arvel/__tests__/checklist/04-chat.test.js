@@ -240,6 +240,29 @@ forEachRole(({ t }) => {
       });
     });
 
+    it('Conversation: покупатель жмёт на продавца в шапке -> страница продавца', async () => {
+      setAuth({ user: { id: 'u1', name: 'Иван', role: 'user' } });
+      chatApi.getConversation.mockResolvedValue({
+        id: 'c1', status: 'open', buyer: { id: 'u1' },
+        seller: { id: 'shop9', seller_id: 's-owner', shop_name: 'Archive Room', rating: 4.8, rating_count: 12 },
+      });
+      await renderConversation();
+      fireEvent.press(await screen.findByLabelText(/Профиль продавца/));
+      expect(navigation.navigate).toHaveBeenCalledWith('SellerShop', {
+        shopId: 'shop9', shopName: 'Archive Room', rating: 4.8, ratingCount: 12,
+      });
+    });
+
+    it('Conversation: продавцу (пишет покупателю) шапка никуда не ведёт', async () => {
+      setAuth({ user: { id: 'u1', name: 'Алекс', role: 'seller' } });
+      chatApi.getConversation.mockResolvedValue({
+        id: 'c1', status: 'open', buyer: { id: 'b7' }, seller: { id: 'shop-u1', seller_id: 'u1', shop_name: 'Мой магазин' },
+      });
+      await renderConversation();
+      await waitFor(() => expect(chatApi.getConversation).toHaveBeenCalled());
+      expect(screen.queryByLabelText(/Профиль продавца/)).toBeNull();
+    });
+
     it('Conversation: стрелка назад', async () => {
       await renderConversation();
       fireEvent.press(screen.getByLabelText('Назад'));

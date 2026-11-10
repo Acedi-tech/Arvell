@@ -298,6 +298,21 @@ export default function ConversationScreen({ navigation, route }) {
     else navigation.navigate('Main', { screen: 'Feed', params: { screen: 'Product', params: { id: pinned.id }, initial: false } });
   };
 
+  // Собеседник — продавец (я покупатель): шапка ведёт на его страницу с
+  // отзывами и объявлениями. Продавцу, который пишет покупателю, вести некуда.
+  const sellerShop = conv?.seller?.id && conv?.buyer?.id === user?.id ? conv.seller : null;
+  const peerRating = rating ?? (sellerShop && sellerShop.rating_count > 0 && typeof sellerShop.rating === 'number'
+    ? sellerShop.rating : null);
+  const openSellerShop = () => {
+    if (!sellerShop) return;
+    navigation.navigate('SellerShop', {
+      shopId: sellerShop.id,
+      shopName: sellerShop.shop_name,
+      rating: sellerShop.rating,
+      ratingCount: sellerShop.rating_count,
+    });
+  };
+
   // Продавец пока не отдаёт номер телефона через API (только имя магазина и
   // рейтинг) — как только бэкенд добавит поле, кнопка сразу заработает.
   // До тех пор явно сообщаем, что номера нет, вместо того чтобы молчать.
@@ -318,16 +333,31 @@ export default function ConversationScreen({ navigation, route }) {
         <Pressable hitSlop={10} style={styles.backBtn} accessibilityLabel="Назад" onPress={() => navigation.goBack()}>
           <BackIcon size={22} />
         </Pressable>
-        <Avatar uri={avatar} name={name} size={38} />
-        <View style={{ flex: 1, minWidth: 0 }}>
-          <Text style={styles.name} numberOfLines={1}>{name}</Text>
-          {rating != null && (
-            <View style={styles.ratingRow}>
-              <StarIcon size={11} />
-              <Text style={styles.rating}>{rating.toFixed(1)}</Text>
-            </View>
-          )}
-        </View>
+        <Pressable
+          style={styles.peer}
+          disabled={!sellerShop}
+          onPress={openSellerShop}
+          accessibilityRole={sellerShop ? 'button' : undefined}
+          accessibilityLabel={sellerShop ? `Профиль продавца ${name}` : undefined}
+        >
+          <Avatar uri={avatar} name={name} size={38} />
+          <View style={{ flex: 1, minWidth: 0 }}>
+            <Text style={styles.name} numberOfLines={1}>{name}</Text>
+            {(peerRating != null || !!sellerShop) && (
+              <View style={styles.ratingRow}>
+                {peerRating != null && (
+                  <>
+                    <StarIcon size={11} />
+                    <Text style={styles.rating}>{peerRating.toFixed(1)}</Text>
+                  </>
+                )}
+                {!!sellerShop && (
+                  <Text style={styles.peerLink}>{peerRating != null ? '· ' : ''}отзывы и объявления ›</Text>
+                )}
+              </View>
+            )}
+          </View>
+        </Pressable>
         {/* Номер продавца есть не всегда — без него кнопку не показываем. */}
         {!!phone && !closed && (
           <Pressable hitSlop={8} style={styles.backBtn} accessibilityLabel="Позвонить" onPress={onCallPress}>
@@ -510,6 +540,8 @@ const styles = StyleSheet.create({
   name: { color: colors.text, fontSize: 15.5, fontWeight: '700' },
   ratingRow: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 2 },
   rating: { color: colors.textMuted, fontSize: 12 },
+  peer: { flex: 1, minWidth: 0, flexDirection: 'row', alignItems: 'center', gap: 10 },
+  peerLink: { color: colors.accent, fontSize: 12 },
 
   pinned: {
     flexDirection: 'row', alignItems: 'center', gap: 10,

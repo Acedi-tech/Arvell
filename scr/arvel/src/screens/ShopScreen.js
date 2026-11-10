@@ -63,6 +63,15 @@ export default function ShopScreen({ navigation, route }) {
   const rating = shop?.rating ?? ratingParam;
   const ratingCount = shop?.rating_count ?? countParam ?? 0;
   const listingsCount = shop?.product_count ?? products.length;
+  // Из чата (корневой SellerShop) экрана «Product» рядом нет — открываем
+  // товар во вкладке «Главная», как закреплённый товар в переписке.
+  const openProduct = (id) => {
+    if (route?.name === 'SellerShop') {
+      navigation.navigate('Main', { screen: 'Feed', params: { screen: 'Product', params: { id }, initial: false } });
+    } else {
+      navigation.navigate('Product', { id });
+    }
+  };
   const openReviews = () => navigation.navigate('Reviews', { shopId, title: name, rating, ratingCount });
 
   return (
@@ -99,7 +108,7 @@ export default function ShopScreen({ navigation, route }) {
         ) : products.length ? (
           <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.listings}>
             {products.map((p) => (
-              <MiniListing key={p.id} product={p} onPress={() => navigation.navigate('Product', { id: p.id })} />
+              <MiniListing key={p.id} product={p} onPress={() => openProduct(p.id)} />
             ))}
           </ScrollView>
         ) : (

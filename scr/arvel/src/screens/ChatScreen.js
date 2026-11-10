@@ -13,7 +13,7 @@ import CheckIcon from '../components/CheckIcon';
 import { listConversations, markConversationRead } from '../api/chat';
 import { useAuth } from '../context/AuthContext';
 import { useChatUnread } from '../context/ChatUnreadContext';
-import { formatTime } from '../utils/chatFormat';
+import { formatTime, isImageBody } from '../utils/chatFormat';
 import { resolveMediaUrl } from '../utils/media';
 import { loadHiddenChats, hideChats } from '../storage/chatStorage';
 
@@ -43,7 +43,7 @@ export default function ChatScreen({ navigation }) {
       rating: iAmSeller ? null : c.seller?.rating,
       status: c.status,
       phone: c.seller?.phone,
-      last: c.last_message_preview || 'Нет сообщений',
+      last: isImageBody(c.last_message_preview) ? '📷 Фото' : (c.last_message_preview || 'Нет сообщений'),
       at: c.last_message_at || c.created_at,
       unread: c.unread_count || 0,
       dot: (c.unread_count || 0) > 0,

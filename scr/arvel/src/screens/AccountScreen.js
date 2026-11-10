@@ -1,14 +1,14 @@
 // Профиль (Editorial, design/v3-c.jsx → V3Profile): аватар, имя или магазин,
 // рейтинг продавца, плашка роли, «Редактировать профиль», плитки статистики,
-// настройки, «Удалить аккаунт» и версия.
+// настройки и версия. «Удалить аккаунт» — в «Редактировать профиль».
 import React, { useEffect, useState } from 'react';
-import { View, StyleSheet, Pressable, ScrollView, Alert } from 'react-native';
+import { View, StyleSheet, Pressable, ScrollView } from 'react-native';
 import { Text } from '../components/AppText';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Svg, { Path } from 'react-native-svg';
 import { colors, spacing, type } from '../theme';
 import {
-  HeartIcon, GridIcon, HelpIcon, DocIcon, LogoutIcon, ChevronRight, SunIcon, StarIcon,
+  HeartIcon, GridIcon, HelpIcon, DocIcon, LogoutIcon, ChevronRight, SunIcon, StarIcon, BellIcon,
 } from '../components/Icons';
 import Header from '../components/Header';
 import Avatar from '../components/Avatar';
@@ -54,12 +54,10 @@ function SettingRow({ icon, label, onPress, danger, last }) {
 }
 
 export default function AccountScreen({ navigation }) {
-  const { user, signOut, deleteAccount } = useAuth();
+  const { user, signOut } = useAuth();
   const { count: favCount } = useFavorites();
   const { items: myListings } = useMyListings();
   const [logoutConfirmVisible, setLogoutConfirmVisible] = useState(false);
-  const [deleteConfirmVisible, setDeleteConfirmVisible] = useState(false);
-  const [deleting, setDeleting] = useState(false);
 
   const name = user?.name || 'Профиль';
   const avatarUri = resolveMediaUrl(user?.profile_pic_url);
@@ -85,18 +83,6 @@ export default function AccountScreen({ navigation }) {
     }
     return () => { alive = false; };
   }, [isSeller, user?.id]);
-
-  const handleDelete = async () => {
-    setDeleteConfirmVisible(false);
-    setDeleting(true);
-    try {
-      await deleteAccount();
-      // RootNavigator сам уведёт на экран входа: isLoggedIn стал false.
-    } catch (e) {
-      setDeleting(false);
-      Alert.alert('Не удалось удалить аккаунт', e?.message || 'Попробуйте ещё раз.');
-    }
-  };
 
   // guardTab в MainTabs перехватывает только переключение вкладки, а не сам
   // момент выхода на экране «Профиль» — поэтому уводим на «Главную» явно.
@@ -171,6 +157,7 @@ export default function AccountScreen({ navigation }) {
 
         <Text style={styles.label}>Настройки</Text>
         <View style={styles.card}>
+          <SettingRow icon={<BellIcon size={20} color={colors.textSub} />} label="Уведомления" onPress={() => navigation.navigate('Notifications')} />
           <SettingRow icon={<HelpIcon size={20} color={colors.textSub} />} label="Помощь" onPress={() => navigation.navigate('Help')} />
           <SettingRow icon={<DocIcon size={20} color={colors.textSub} />} label="Правила" onPress={() => navigation.navigate('Rules')} />
           {isAdmin && (
@@ -178,10 +165,6 @@ export default function AccountScreen({ navigation }) {
           )}
           <SettingRow icon={<LogoutIcon size={20} />} label="Выйти" danger last onPress={() => setLogoutConfirmVisible(true)} />
         </View>
-
-        <Pressable style={styles.deleteBtn} disabled={deleting} onPress={() => setDeleteConfirmVisible(true)}>
-          <Text style={styles.deleteText}>{deleting ? 'Удаляем аккаунт…' : 'Удалить аккаунт'}</Text>
-        </Pressable>
 
         <Text style={styles.version}>ARVELL · версия {appConfig.expo.version}</Text>
       </ScrollView>
@@ -196,17 +179,6 @@ export default function AccountScreen({ navigation }) {
         onConfirm={handleLogout}
       />
 
-      <ConfirmDialog
-        visible={deleteConfirmVisible}
-        title="Удалить аккаунт?"
-        message={isSeller
-          ? 'Профиль, магазин и все объявления будут удалены без возможности восстановления.'
-          : 'Профиль, избранное и история будут удалены без возможности восстановления.'}
-        confirmText="Удалить"
-        cancelText="Отмена"
-        onCancel={() => setDeleteConfirmVisible(false)}
-        onConfirm={handleDelete}
-      />
     </SafeAreaView>
   );
 }
@@ -243,7 +215,5 @@ const styles = StyleSheet.create({
   setRowBorder: { borderBottomWidth: 1, borderBottomColor: colors.border },
   setLabel: { flex: 1, color: colors.text, fontSize: 15 },
 
-  deleteBtn: { alignSelf: 'center', padding: 6 },
-  deleteText: { color: colors.danger, fontSize: 13 },
   version: { color: '#5a5a5a', fontSize: 12, textAlign: 'center', paddingTop: 14, paddingBottom: 4 },
 });

@@ -1,4 +1,5 @@
 import { AppState, PermissionsAndroid, Platform } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as devicesApi from '../api/devices';
 
 // Пуши через Firebase Cloud Messaging: сервер рассылает их по FCM-токену,
@@ -37,6 +38,18 @@ async function askPermission(m) {
 }
 
 let currentToken = null;
+
+// Переключатель «Новые сообщения» на экране «Уведомления». Выключен —
+// токен снимаем с сервера и не регистрируем, пока не включат обратно.
+export const NOTIFICATION_PREFS_KEY = 'arvell.notification_prefs';
+async function chatPushMuted() {
+  try {
+    const raw = await AsyncStorage.getItem(NOTIFICATION_PREFS_KEY);
+    return raw ? JSON.parse(raw)?.msg === false : false;
+  } catch {
+    return false;
+  }
+}
 
 const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
@@ -133,6 +146,10 @@ export async function enablePush() {
       if ((registered && !force) || inFlight) return;
       inFlight = true;
       try {
+        if (await chatPushMuted()) {
+          setStatus({ server: 'выключено в настройках приложения' });
+          return;
+        }
         await registerOnce(m, messaging);
         registered = true;
       } catch (e) {
@@ -144,8 +161,9 @@ export async function enablePush() {
     };
     retryRegistration = attempt;
     await attempt();
-    const offRefresh = m.onTokenRefresh(messaging, (fresh) => {
+    const offRefresh = m.onTokenRefresh(messaging, async (fresh) => {
       currentToken = fresh;
+      if (await chatPushMuted()) return;
       devicesApi.registerDevice(fresh, Platform.OS).catch(() => {});
     });
     const sub = AppState.addEventListener('change', (state) => {
@@ -178,6 +196,15 @@ export async function disablePush(timeoutMs = 3000) {
     ]);
   } catch {
     // Сервер сам отключит мёртвый токен при следующей рассылке.
+  }
+}
+
+// Вызывает экран «Уведомления» после того, как сохранил выбор.
+export async function setChatPushEnabled(on) {
+  if (on) await retryPushRegistration();
+  else {
+    await disablePush();
+    setStatus({ server: 'выключено в настройках приложения' });
   }
 }
 

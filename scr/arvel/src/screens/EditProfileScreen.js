@@ -1,4 +1,4 @@
-// Экран редактирования профиля.
+// Экран редактирования профиля. Внизу — «Удалить аккаунт».
 import React, { useEffect, useRef, useState } from 'react';
 import { View, Pressable, ScrollView, KeyboardAvoidingView, Platform, StyleSheet, Alert } from 'react-native';
 import { Text, TextInput } from '../components/AppText';
@@ -17,7 +17,7 @@ import Avatar from '../components/Avatar';
 import Button from '../components/Button';
 
 export default function EditProfileScreen({ navigation }) {
-  const { user, updateProfile } = useAuth();
+  const { user, updateProfile, deleteAccount } = useAuth();
   const { maxImageWidth, maxImageHeight, maxImageBytes } = useAppConfig();
   // Номер телефона, который бэкенд подставляет вместо незаполненного имени,
   // никнеймом не считаем — поле тогда пустое.
@@ -30,6 +30,8 @@ export default function EditProfileScreen({ navigation }) {
   const [sheetVisible, setSheetVisible] = useState(false);
   // Уход с экрана, отложенный до ответа в диалоге «Сохранить изменения?».
   const [pendingLeave, setPendingLeave] = useState(null);
+  const [deleteConfirmVisible, setDeleteConfirmVisible] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
   const avatarUri = newAvatar?.uri || resolveMediaUrl(user?.profile_pic_url);
   const isSeller = user?.role === 'seller';
@@ -122,6 +124,20 @@ export default function EditProfileScreen({ navigation }) {
     if (await save()) leave(action);
   };
 
+  const handleDelete = async () => {
+    setDeleteConfirmVisible(false);
+    setDeleting(true);
+    // Аккаунта больше не будет — вопрос «Сохранить изменения?» ни к чему.
+    leaveGuard.current.dirty = false;
+    try {
+      await deleteAccount();
+      // RootNavigator сам уведёт на экран входа: isLoggedIn стал false.
+    } catch (e) {
+      setDeleting(false);
+      Alert.alert('Не удалось удалить аккаунт', e?.message || 'Попробуйте ещё раз.');
+    }
+  };
+
   const onLeaveDiscard = () => {
     const action = pendingLeave;
     setPendingLeave(null);
@@ -188,6 +204,20 @@ export default function EditProfileScreen({ navigation }) {
               />
             </>
           )}
+
+          <Pressable
+            style={styles.deleteBtn}
+            disabled={deleting || saving}
+            accessibilityRole="button"
+            onPress={() => setDeleteConfirmVisible(true)}
+          >
+            <Text style={styles.deleteText}>{deleting ? 'Удаляем аккаунт…' : 'Удалить аккаунт'}</Text>
+          </Pressable>
+          <Text style={styles.deleteNote}>
+            {isSeller
+              ? 'Профиль, магазин и все объявления удалятся без возможности восстановления.'
+              : 'Профиль, избранное и история удалятся без возможности восстановления.'}
+          </Text>
         </ScrollView>
 
         <View style={styles.footer}>
@@ -204,6 +234,18 @@ export default function EditProfileScreen({ navigation }) {
         onClose={() => setSheetVisible(false)}
         onPick={(asset) => setNewAvatar(toUploadAsset(asset))}
         onRemove={newAvatar ? () => setNewAvatar(null) : undefined}
+      />
+
+      <ConfirmDialog
+        visible={deleteConfirmVisible}
+        title="Удалить аккаунт?"
+        message={isSeller
+          ? 'Профиль, магазин и все объявления будут удалены без возможности восстановления.'
+          : 'Профиль, избранное и история будут удалены без возможности восстановления.'}
+        confirmText="Удалить"
+        cancelText="Отмена"
+        onCancel={() => setDeleteConfirmVisible(false)}
+        onConfirm={handleDelete}
       />
 
       <ConfirmDialog
@@ -240,5 +282,11 @@ const styles = StyleSheet.create({
   phoneText: { color: colors.textMuted, fontSize: 15 },
   verified: { ...type.mono, fontSize: 10, color: colors.success },
   notice: { color: colors.textMuted, fontSize: 12.5, lineHeight: 18, marginTop: spacing.sm },
+  deleteBtn: {
+    marginTop: 36, minHeight: 48, alignItems: 'center', justifyContent: 'center',
+    borderWidth: 1, borderColor: colors.danger,
+  },
+  deleteText: { ...type.monoMedium, color: colors.danger, fontSize: 12 },
+  deleteNote: { color: colors.textMuted, fontSize: 12, lineHeight: 17, marginTop: spacing.sm, textAlign: 'center' },
   footer: { paddingHorizontal: spacing.md, paddingTop: 10, paddingBottom: 18, borderTopWidth: 1, borderTopColor: colors.border },
 });

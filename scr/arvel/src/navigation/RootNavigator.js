@@ -4,6 +4,7 @@ import { useAuth } from '../context/AuthContext';
 import AuthNavigator from './AuthNavigator';
 import MainTabs from './MainTabs';
 import ConversationScreen from '../screens/ConversationScreen';
+import ShopScreen from '../screens/ShopScreen';
 import ReviewsScreen from '../screens/ReviewsScreen';
 import WriteReviewScreen from '../screens/WriteReviewScreen';
 import DevComponentsScreen from '../screens/DevComponentsScreen';
@@ -69,6 +70,9 @@ export default function RootNavigator() {
           держим их в корне, как чат, чтобы «Назад» всегда вёл туда, откуда пришли. */}
       <Stack.Screen name="Reviews" component={ReviewsScreen} />
       <Stack.Screen name="WriteReview" component={WriteReviewScreen} />
+      {/* Страница продавца, открытая из шапки чата: в корне, чтобы «Назад»
+          возвращал в переписку, а не в ленту. */}
+      <Stack.Screen name="SellerShop" component={ShopScreen} />
       {/* Витрина компонентов дизайна — только по ссылке arvell://dev/components */}
       <Stack.Screen name="DevComponents" component={DevComponentsScreen} />
       {/* Диагностика пушей — только по ссылке arvell://dev/push */}

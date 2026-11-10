@@ -101,13 +101,17 @@ describe('ПРОДАВЕЦ', () => {
       expect(navigation.navigate).toHaveBeenCalledWith(route);
     });
 
-    // Убраны до появления пушей и чата поддержки на бэкенде — пункты устарели.
-    it.skip('Строка «Уведомления» -> Notifications', () => {});
+    it('Строка «Уведомления» -> Notifications', () => {
+      renderAccount();
+      fireEvent.press(screen.getByText('Уведомления'));
+      expect(navigation.navigate).toHaveBeenCalledWith('Notifications');
+    });
+
+    // Чата поддержки на бэкенде пока нет.
     it.skip('Строка «Чат с поддержкой» -> Conversation', () => {});
 
-    it('Строк «Уведомления» и «Чат с поддержкой» нет, пока нет пушей и чата поддержки', () => {
+    it('Строки «Чат с поддержкой» нет, пока нет чата поддержки', () => {
       renderAccount();
-      expect(screen.queryByText('Уведомления')).toBeNull();
       expect(screen.queryByText('Чат с поддержкой')).toBeNull();
     });
 

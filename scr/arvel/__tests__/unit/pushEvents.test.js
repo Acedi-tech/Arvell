@@ -71,6 +71,39 @@ describe('пуши: регистрация iPhone', () => {
   });
 });
 
+describe('пуши: переключатель «Новые сообщения»', () => {
+  const m = require('@react-native-firebase/messaging');
+  const devices = require('../../src/api/devices');
+  const AsyncStorage = require('@react-native-async-storage/async-storage');
+
+  beforeEach(async () => {
+    devices.registerDevice.mockClear();
+    devices.unregisterDevice.mockClear();
+    m.getToken.mockReset().mockResolvedValue('test-fcm-token');
+    m.getAPNSToken.mockReset().mockResolvedValue('test-apns-token');
+    await AsyncStorage.clear();
+  });
+
+  it('выключен — устройство не регистрируется; включили — регистрируется', async () => {
+    const push = require('../../src/utils/push');
+    await AsyncStorage.setItem(push.NOTIFICATION_PREFS_KEY, JSON.stringify({ msg: false }));
+    const off = await push.enablePush();
+    expect(devices.registerDevice).not.toHaveBeenCalled();
+    await AsyncStorage.setItem(push.NOTIFICATION_PREFS_KEY, JSON.stringify({ msg: true }));
+    await push.setChatPushEnabled(true);
+    expect(devices.registerDevice).toHaveBeenCalledWith('test-fcm-token', 'ios');
+    off();
+  });
+
+  it('выключили — токен снимается с сервера', async () => {
+    const push = require('../../src/utils/push');
+    const off = await push.enablePush();
+    await push.setChatPushEnabled(false);
+    expect(devices.unregisterDevice).toHaveBeenCalledWith('test-fcm-token');
+    off();
+  });
+});
+
 describe('пуши: запасной путь к токену Apple и диагностика', () => {
   const m = require('@react-native-firebase/messaging');
   const N = require('expo-notifications');

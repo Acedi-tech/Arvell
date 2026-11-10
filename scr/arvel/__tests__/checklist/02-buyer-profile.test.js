@@ -73,14 +73,17 @@ describe('ПОКУПАТЕЛЬ', () => {
       expect(navigation.parent.navigate).toHaveBeenCalledWith('Favorites');
     });
 
-    // Строки убраны из профиля намеренно (коммит b003f69): пушей и чата
-    // поддержки на бэкенде пока нет. Пункты чек-листа устарели до их появления.
-    it.skip('Строка «Уведомления» -> Notifications', () => {});
+    it('Строка «Уведомления» -> Notifications', () => {
+      renderAccount();
+      fireEvent.press(screen.getByText('Уведомления'));
+      expect(navigation.navigate).toHaveBeenCalledWith('Notifications');
+    });
+
+    // Чата поддержки на бэкенде пока нет.
     it.skip('Строка «Чат с поддержкой» -> Conversation', () => {});
 
-    it('Строк «Уведомления» и «Чат с поддержкой» нет, пока нет пушей и чата поддержки', () => {
+    it('Строки «Чат с поддержкой» нет, пока нет чата поддержки', () => {
       renderAccount();
-      expect(screen.queryByText('Уведомления')).toBeNull();
       expect(screen.queryByText('Чат с поддержкой')).toBeNull();
     });
 
@@ -140,27 +143,33 @@ describe('ПОКУПАТЕЛЬ', () => {
       expect(navigation.parent.navigate).toHaveBeenCalledWith('Feed');
     });
 
-    it('«Удалить аккаунт» -> подтверждение -> deleteAccount', async () => {
-      const auth = setAuth();
+    it('«Удалить аккаунт» в профиле больше нет — он в «Редактировать профиль»', () => {
+      setAuth();
       renderAccount();
+      expect(screen.queryByText('Удалить аккаунт')).toBeNull();
+    });
+
+    it('EditProfile: «Удалить аккаунт» -> подтверждение -> deleteAccount', async () => {
+      const auth = setAuth();
+      render(<EditProfileScreen navigation={navigation} />);
       fireEvent.press(screen.getByText('Удалить аккаунт'));
       expect(screen.getByText('Удалить аккаунт?')).toBeTruthy();
       fireEvent.press(screen.getByText('Удалить'));
       await waitFor(() => expect(auth.deleteAccount).toHaveBeenCalledTimes(1));
     });
 
-    it('«Удалить аккаунт» -> «Отмена» ничего не удаляет', () => {
+    it('EditProfile: «Удалить аккаунт» -> «Отмена» ничего не удаляет', () => {
       const auth = setAuth();
-      renderAccount();
+      render(<EditProfileScreen navigation={navigation} />);
       fireEvent.press(screen.getByText('Удалить аккаунт'));
       fireEvent.press(screen.getByText('Отмена'));
       expect(auth.deleteAccount).not.toHaveBeenCalled();
     });
 
-    it('Сбой удаления аккаунта -> сообщение об ошибке', async () => {
+    it('EditProfile: сбой удаления аккаунта -> сообщение об ошибке', async () => {
       const auth = setAuth();
       auth.deleteAccount.mockRejectedValueOnce(new Error('Сервер не отвечает, попробуйте позже'));
-      renderAccount();
+      render(<EditProfileScreen navigation={navigation} />);
       fireEvent.press(screen.getByText('Удалить аккаунт'));
       fireEvent.press(screen.getByText('Удалить'));
       await waitFor(() => expect(Alert.alert).toHaveBeenCalledWith('Не удалось удалить аккаунт', 'Сервер не отвечает, попробуйте позже'));
