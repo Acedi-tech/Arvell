@@ -1,6 +1,9 @@
 package com.arvell.app
 
 import android.app.Application
+import android.app.NotificationChannel
+import android.app.NotificationManager
+import android.os.Build
 import android.content.res.Configuration
 
 import com.facebook.react.PackageList
@@ -45,8 +48,24 @@ class MainApplication : Application(), ReactApplication {
     } catch (e: IllegalArgumentException) {
       ReleaseLevel.STABLE
     }
+    createMessagesChannel()
     loadReactNative(this)
     ApplicationLifecycleDispatcher.onApplicationCreate(this)
+  }
+
+  // Канал для пушей о сообщениях. Высокая важность — уведомление всплывает
+  // плашкой поверх экрана, как в мессенджерах; с обычной оно тихо попадало
+  // в шторку. Firebase шлёт в него по умолчанию (firebase.json). Важность
+  // канала после создания не меняется — для другой нужен новый id.
+  private fun createMessagesChannel() {
+    if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return
+    val channel = NotificationChannel("messages", "Сообщения", NotificationManager.IMPORTANCE_HIGH).apply {
+      description = "Новые сообщения в чатах"
+      enableVibration(true)
+      enableLights(true)
+      lightColor = 0xFFFFD700.toInt()
+    }
+    getSystemService(NotificationManager::class.java)?.createNotificationChannel(channel)
   }
 
   override fun onConfigurationChanged(newConfig: Configuration) {
