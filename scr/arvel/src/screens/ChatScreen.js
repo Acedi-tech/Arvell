@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useRef } from 'react';
 import { View, FlatList, StyleSheet, Pressable, Alert, AppState } from 'react-native';
 import { Text, TextInput } from '../components/AppText';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -53,6 +53,9 @@ export default function ChatScreen({ navigation }) {
   // Пока экран открыт, список обновляется сам: раз в CHATS_POLL_MS, при
   // возврате приложения из фона и сразу по пушу (onChatActivity). Без этого
   // новые сообщения появлялись, только если уйти с экрана и вернуться.
+  // Только что скрытые — сразу в памяти: опрос раз в 5 с мог прочитать
+  // хранилище до записи и вернуть чат обратно.
+  const justHidden = useRef(new Set());
   const loadThreads = useCallback(async (isAlive = () => true) => {
     try {
       const [res, hidden] = await Promise.all([
@@ -62,7 +65,7 @@ export default function ChatScreen({ navigation }) {
       if (!isAlive()) return;
       setError(null);
       setThreads((res?.data ?? [])
-        .filter((c) => !hidden.includes(c.id))
+        .filter((c) => !hidden.includes(c.id) && !justHidden.current.has(c.id))
         .map(mapConversation));
     } catch (e) {
       // Фоновое обновление не затирает уже показанный список ошибкой.
@@ -138,7 +141,8 @@ export default function ChatScreen({ navigation }) {
           style: 'destructive',
           onPress: () => {
             const ids = selectedIds;
-            setThreads(threads.filter((t) => !ids.includes(t.id)));
+            ids.forEach((id) => justHidden.current.add(id));
+            setThreads((cur) => cur.filter((t) => !ids.includes(t.id)));
             hideChats(ids);
             exitSelectMode();
           },
@@ -208,7 +212,16 @@ export default function ChatScreen({ navigation }) {
           const checked = selectedIds.includes(item.id);
           const closed = item.status === 'closed';
           return (
-            <Pressable style={styles.row} onPress={() => handleRowPress(item)}>
+            <Pressable
+              style={styles.row}
+              onPress={() => handleRowPress(item)}
+              onLongPress={() => {
+                // Долгое нажатие — сразу выбрать этот чат.
+                if (!selectMode) setSelectMode(true);
+                if (!selectedIds.includes(item.id)) toggleSelected(item.id);
+              }}
+              delayLongPress={350}
+            >
               {selectMode && (
                 <View style={[styles.checkbox, checked && styles.checkboxOn]}>
                   {checked && <CheckIcon size={14} />}
@@ -236,6 +249,9 @@ export default function ChatScreen({ navigation }) {
         }}
       />
 
+      {selectMode && n === 0 && (
+        <Text style={styles.selectHint}>Отметьте чаты, которые хотите скрыть или прочитать</Text>
+      )}
       {selectMode && (
         <View style={styles.panel}>
           <Button title="✓ Отметить прочитанным" disabled={n === 0} onPress={markSelectedRead} style={{ flex: 1 }} />
@@ -301,4 +317,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.md, paddingTop: 10, paddingBottom: 14,
   },
   hideBtn: { width: 110 },
+  selectHint: {
+    color: colors.textMuted, fontSize: 13, textAlign: 'center',
+    paddingHorizontal: spacing.md, paddingVertical: 8,
+    borderTopWidth: 1, borderTopColor: colors.border,
+  },
 });
