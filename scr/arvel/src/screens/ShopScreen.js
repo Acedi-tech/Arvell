@@ -63,11 +63,11 @@ export default function ShopScreen({ navigation, route }) {
   const rating = shop?.rating ?? ratingParam;
   const ratingCount = shop?.rating_count ?? countParam ?? 0;
   const listingsCount = shop?.product_count ?? products.length;
-  // Из чата (корневой SellerShop) экрана «Product» рядом нет — открываем
-  // товар во вкладке «Главная», как закреплённый товар в переписке.
+  // Из чата (корневой SellerShop) — товар тоже поверх, чтобы «Назад»
+  // вёл обратно к продавцу и в переписку.
   const openProduct = (id) => {
     if (route?.name === 'SellerShop') {
-      navigation.navigate('Main', { screen: 'Feed', params: { screen: 'Product', params: { id }, initial: false } });
+      navigation.push('ChatProduct', { id });
     } else {
       navigation.navigate('Product', { id });
     }

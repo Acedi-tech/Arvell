@@ -13,6 +13,7 @@ function createNavigation() {
   const listeners = {};
   const nav = {
     navigate: jest.fn(),
+    push: jest.fn(),
     goBack: jest.fn(),
     dispatch: jest.fn(),
     getParent: jest.fn(() => parent),

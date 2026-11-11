@@ -178,7 +178,9 @@ export default function ProductScreen({ navigation, route }) {
     rating: product.rating,
     ratingCount,
   });
-  const openShop = () => navigation.navigate('Shop', {
+  // Открыт из чата (корневой ChatProduct) — страница продавца тоже корневая.
+  const fromChat = route?.name === 'ChatProduct';
+  const openShop = () => navigation.navigate(fromChat ? 'SellerShop' : 'Shop', {
     shopId: shop.id,
     shopName: shop.shop_name,
     rating: shop.rating,
@@ -353,7 +355,9 @@ export default function ProductScreen({ navigation, route }) {
         {isOwn ? (
           <>
             {offSale && <View style={styles.offPlaque}><Text style={styles.offPlaqueText}>Снято с продажи</Text></View>}
-            <Button title="Редактировать" onPress={() => navigation.navigate('AddProduct', { editId: product.id })} />
+            <Button title="Редактировать" onPress={() => (fromChat
+              ? navigation.navigate('Main', { screen: 'Account', params: { screen: 'AddProduct', params: { editId: product.id }, initial: false } })
+              : navigation.navigate('AddProduct', { editId: product.id }))} />
           </>
         ) : (
           <View style={styles.buyRow}>

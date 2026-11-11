@@ -295,7 +295,7 @@ export default function ConversationScreen({ navigation, route }) {
   const openPinned = () => {
     if (!pinned?.id) return;
     if (product?.id === pinned.id && navigation.canGoBack?.()) navigation.goBack();
-    else navigation.navigate('Main', { screen: 'Feed', params: { screen: 'Product', params: { id: pinned.id }, initial: false } });
+    else navigation.push('ChatProduct', { id: pinned.id });
   };
 
   // Собеседник — продавец (я покупатель): шапка ведёт на его страницу с

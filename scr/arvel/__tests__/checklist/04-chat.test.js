@@ -235,9 +235,8 @@ forEachRole(({ t }) => {
       });
       await renderConversation();
       fireEvent.press(await screen.findByText('Adidas Samba'));
-      expect(navigation.navigate).toHaveBeenCalledWith('Main', {
-        screen: 'Feed', params: { screen: 'Product', params: { id: 'p9' }, initial: false },
-      });
+      // Поверх переписки, чтобы «Назад» вернул в чат, а не на «Главную».
+      expect(navigation.push).toHaveBeenCalledWith('ChatProduct', { id: 'p9' });
     });
 
     it('Conversation: покупатель жмёт на продавца в шапке -> страница продавца', async () => {
